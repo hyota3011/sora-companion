@@ -14,10 +14,10 @@
     "default_title": "Open Sora"
   },
   "icons": {
-    "16": "images/furoshiki-16.png",
-    "32": "images/furoshiki-32.png",
-    "64": "images/furoshiki-64.png",
-    "128": "images/furoshiki-128.png"
+    "16": "images/seal-16.png",
+    "32": "images/seal-32.png",
+    "64": "images/seal-64.png",
+    "128": "images/seal-128.png"
   },
   "side_panel": {
     "default_path": "llm-ui/dist/index.html"
