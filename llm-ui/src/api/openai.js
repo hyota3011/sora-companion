@@ -1,4 +1,4 @@
-import { getApiKey } from "./keys";
+import { _getApiKey } from "../config/profiles";
 
 /**
  * Sends a chat completion request to OpenAI and returns an async generator
@@ -12,7 +12,7 @@ import { getApiKey } from "./keys";
 export async function* streamChat(messages, model, profile) {
     const { endpoint } = profile;
 
-    const apiKey = await getApiKey(profile.id);
+    const apiKey = await _getApiKey(profile.id);
 
     if (!apiKey) {
         throw new Error(`API KEY is missing for ${profile.name}.`);

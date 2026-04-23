@@ -29,18 +29,23 @@ export const defaultProfiles = [
 
 export const getActiveProfile = () => {
     const saved = localStorage.getItem("activeProfileId");
-    return defaultProfiles.find(p => p.id === saved);
+    return defaultProfiles.find(p => p.id.toLowerCase() === saved?.toLowerCase()) || defaultProfiles[0];
 };
 
-function getFromEnv(name) {
-    if (!name) return null;
-    return (import.meta.env[`VITE_${name.toUpperCase()}_KEY`]) || null;
+function getFromEnv(id) {
+    switch (id) {
+        case provider.GROK:
+            return import.meta.env.VITE_GROK_KEY;
+        case provider.OPENAI:
+            return import.meta.env.VITE_OPENAI_KEY;
+        default:
+            return null;
+    }
 }
 
 export async function _getApiKey() {
     const profile = getActiveProfile();
     if (!profile || !profile.id) return null;
-
     let key = await getApiKey(profile.id);
     if (!key) {
         key = getFromEnv(profile.id);
