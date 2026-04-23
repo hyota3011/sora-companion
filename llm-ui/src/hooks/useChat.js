@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { streamChat } from "../api/index.js";
-import { getValueOfDefaultModel } from "../config/models.jsx";
+import { getValueOfDefaultModel, getDefaultModel } from "../config/models.jsx";
 import { defaultProfiles, getActiveProfile } from "../config/profiles.js";
 
 export function useChat() {
@@ -10,7 +10,7 @@ export function useChat() {
     const [isStreaming, setIsStreaming] = useState(false);
     const [streamingMessage, setStreamingMessage] = useState(null);
     const [activeProfile, setActiveProfile] = useState(getActiveProfile());
-    const choosenModelRef = useRef(getValueOfDefaultModel());
+    const choosenModelRef = useRef(getDefaultModel());
 
     const messagesEndRef = useRef(null);
     const textareaRef = useRef(null);
@@ -20,7 +20,7 @@ export function useChat() {
         if (newProfile) {
             setActiveProfile(newProfile);
             localStorage.setItem("activeProfileId", profileId);
-            choosenModelRef.current = getValueOfDefaultModel();
+            choosenModelRef.current = getDefaultModel();
         }
     }, []);
 
@@ -83,7 +83,7 @@ export function useChat() {
 
             for await (const delta of streamChat(
                 apiMessages,
-                choosenModelRef.current,
+                choosenModelRef.current.val,
                 activeProfile
             )) {
                 if (!hasStarted) {

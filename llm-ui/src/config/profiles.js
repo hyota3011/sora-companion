@@ -29,7 +29,7 @@ export const defaultProfiles = [
 
 export const getActiveProfile = () => {
     const saved = localStorage.getItem("activeProfileId");
-    return defaultProfiles.find(p => p.id === saved) || defaultProfiles[0];
+    return defaultProfiles.find(p => p.id === saved);
 };
 
 function getFromEnv(name) {

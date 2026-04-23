@@ -10,10 +10,9 @@ import { getIdOfDefaultModel, getModels } from "../config/models";
 // 1. Isolate the dropdown state to prevent re-rendering the whole input area
 const ModelSelector = memo(({ choosenModelRef }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [selectedModel, setSelectedModel] = useState(getIdOfDefaultModel());
+    const [selectedModel, setSelectedModel] = useState(choosenModelRef.current.id);
     const menuRef = useRef(null);
 
-    // Derived state: no need for extra useState here
     const models = getModels();
     const activeModel = models.find(m => m.id === selectedModel);
 
@@ -29,7 +28,7 @@ const ModelSelector = memo(({ choosenModelRef }) => {
 
     const handleModelSelect = (model) => {
         setSelectedModel(model.id);
-        choosenModelRef.current = model.val;
+        choosenModelRef.current = model;
         setIsMenuOpen(false);
     };
 
@@ -45,7 +44,7 @@ const ModelSelector = memo(({ choosenModelRef }) => {
             </button>
 
             {isMenuOpen && (
-                <div className="dropdown-menu">
+                <div className="dropdown-menu" >
                     {models.map((model) => (
                         <button
                             key={model.id}
@@ -78,6 +77,7 @@ const ChatInput = memo(({
     onSend,
     isStreaming,
     textareaRef,
+    activeProfile,
     choosenModelRef,
     providerName
 }) => {
@@ -101,7 +101,7 @@ const ChatInput = memo(({
                             <PlusIcon />
                         </button>
 
-                        <ModelSelector choosenModelRef={choosenModelRef} />
+                        <ModelSelector key={activeProfile.id} choosenModelRef={choosenModelRef} />
                     </div>
                     <div className="toolbar-right">
                         {inputValue.trim().length > 0 ? (

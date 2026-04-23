@@ -50,6 +50,7 @@ export default function Chat() {
                 onInputChange={handleInput}
                 onKeyDown={handleKeyDown}
                 onSend={handleSend}
+                activeProfile={activeProfile}
                 choosenModelRef={choosenModelRef}
                 isStreaming={isStreaming}
                 textareaRef={textareaRef}

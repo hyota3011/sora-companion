@@ -13,6 +13,7 @@ export async function* streamChat(messages, model, profile) {
     const { endpoint } = profile;
 
     const apiKey = await getApiKey(profile.id);
+    console.log(apiKey)
 
     if (!apiKey) {
         throw new Error(`API KEY is missing for ${profile.name}.`);

@@ -2,6 +2,15 @@ import { SparkleIcon, MeshIcon, GraduationCapIcon, SearchIcon } from "../compone
 
 export const openai = [
     {
+        id: 'search',
+        title: 'Search',
+        tag: 'GPT-5-nano',
+        val: 'gpt-5-nano',
+        desc: 'Answers with enhanced references',
+        default: true,
+        icon: <SearchIcon />
+    },
+    {
         id: 'smart',
         title: 'Smart',
         tag: 'GPT-5-mini',
@@ -27,14 +36,5 @@ export const openai = [
         desc: 'Better for more complex topics',
         default: false,
         icon: <MeshIcon />
-    },
-    {
-        id: 'search',
-        title: 'Search',
-        tag: 'GPT-5-nano',
-        val: 'gpt-5-nano',
-        desc: 'Answers with enhanced references',
-        default: true,
-        icon: <SearchIcon />
     }
 ];

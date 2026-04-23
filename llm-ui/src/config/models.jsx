@@ -3,7 +3,7 @@ import { grok } from './grok';
 import { provider } from './profiles';
 
 export function getModels() {
-    const activeId = localStorage.getItem("activeProfileId") || provider[0];
+    const activeId = localStorage.getItem("activeProfileId");
     switch (activeId) {
         case provider.OPENAI:
             return openai;
@@ -14,10 +14,14 @@ export function getModels() {
     }
 }
 
+export function getDefaultModel() {
+    return getModels().find(model => model.default);
+}
+
 export function getValueOfDefaultModel() {
-    return getModels().find(model => model.default)?.val || "";
+    return getModels().find(model => model.default)?.val;
 }
 
 export function getIdOfDefaultModel() {
-    return getModels().find(model => model.default)?.id || "";
+    return getModels().find(model => model.default)?.id;
 }
