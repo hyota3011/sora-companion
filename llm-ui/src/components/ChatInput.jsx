@@ -5,15 +5,16 @@ import {
     MicIcon
 } from "./icons";
 import sendIconImg from "../../static/images/SendIcon.png";
-import { models } from "../config/models";
+import { getIdOfDefaultModel, getModels } from "../config/models";
 
 // 1. Isolate the dropdown state to prevent re-rendering the whole input area
 const ModelSelector = memo(({ choosenModelRef }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [selectedModel, setSelectedModel] = useState("smart");
+    const [selectedModel, setSelectedModel] = useState(getIdOfDefaultModel());
     const menuRef = useRef(null);
 
     // Derived state: no need for extra useState here
+    const models = getModels();
     const activeModel = models.find(m => m.id === selectedModel);
 
     useEffect(() => {

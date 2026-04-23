@@ -1,4 +1,5 @@
 import { streamChat as streamOpenAI } from "./openai";
+import { streamChat as streamGrok } from "./grok";
 
 /**
  * Provider-agnostic streaming entry point.
@@ -16,9 +17,10 @@ export async function* streamChat(messages, model, activeProfile) {
         case "openai":
             yield* streamOpenAI(messages, model, activeProfile);
             break;
+        case "grok":
+            yield* streamGrok(messages, model, activeProfile);
+            break;
         case "gemini":
-            // Normally you would route to a streamGemini() here. 
-            // For now, depending on compatibility, you might throw or fallback.
             throw new Error("Gemini stream handler not implemented yet.");
         default:
             throw new Error(`Unknown provider: "${activeProfile.id}"`);

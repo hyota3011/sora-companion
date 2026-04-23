@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { streamChat } from "../api/index.js";
-import { DEFAULT_MODEL } from "../config/models.jsx";
+import { getValueOfDefaultModel } from "../config/models.jsx";
 import { defaultProfiles, getActiveProfile } from "../config/profiles.js";
 
 export function useChat() {
@@ -10,7 +10,7 @@ export function useChat() {
     const [isStreaming, setIsStreaming] = useState(false);
     const [streamingMessage, setStreamingMessage] = useState(null);
     const [activeProfile, setActiveProfile] = useState(getActiveProfile());
-    const choosenModelRef = useRef(DEFAULT_MODEL);
+    const choosenModelRef = useRef(getValueOfDefaultModel());
 
     const messagesEndRef = useRef(null);
     const textareaRef = useRef(null);
@@ -20,6 +20,7 @@ export function useChat() {
         if (newProfile) {
             setActiveProfile(newProfile);
             localStorage.setItem("activeProfileId", profileId);
+            choosenModelRef.current = getValueOfDefaultModel();
         }
     }, []);
 
@@ -87,7 +88,6 @@ export function useChat() {
             )) {
                 if (!hasStarted) {
                     hasStarted = true;
-                    // Clear the "...thinking" state now that we have real data
                 }
                 accumulated += delta;
                 setStreamingMessage({

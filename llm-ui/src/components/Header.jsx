@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { EditIcon, ChevronDownIcon, MoreHorizontalIcon, XIcon } from "./icons";
 import keyIcon from "../../static/images/KeyIcon.png";
 import { saveApiKey } from "../api/keys";
+import { _getApiKey } from "../config/profiles";
 
-const VITE_SECRET_KEY = import.meta.env.VITE_SECRET_KEY;
 const VITE_PROFILE = import.meta.env.VITE_PROFILE;
 
 function ProfileSelector({ profiles, activeProfile, onProfileChange }) {
@@ -58,9 +58,9 @@ function ProfileSelector({ profiles, activeProfile, onProfileChange }) {
 
 export default function Header({ onNewChat, profiles, activeProfile, onProfileChange }) {
 
-    const handleSetKey = () => {
+    const handleSetKey = async () => {
         if (!activeProfile) return;
-        const key = (VITE_PROFILE != 'prod' ? VITE_SECRET_KEY : null) || window.prompt(`Enter secret key for ${activeProfile.name}:`);
+        const key = (VITE_PROFILE != 'prod' ? await _getApiKey() : null) || window.prompt(`Enter secret key for ${activeProfile.name}:`);
         if (key) {
             saveApiKey(activeProfile.id, key)
                 .then(() => alert("API key saved successfully!"))

@@ -14,3 +14,6 @@ export * from './GraduationCapIcon';
 export * from './SearchIcon';
 export * from './SendIcon';
 export * from './MicIcon';
+export * from './ImageIcon';
+export * from './PictureIcon';
+

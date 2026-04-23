@@ -1,54 +1,23 @@
-import { SparkleIcon, MeshIcon, GraduationCapIcon, SearchIcon } from "../components/icons";
+import { openai } from './openai';
+import { grok } from './grok';
+import { provider } from './profiles';
 
-
-const openai = [
-    {
-        id: 'smart',
-        title: 'Smart',
-        tag: 'GPT-5-mini',
-        val: 'gpt-5-mini',
-        desc: 'Thinks deeply or quickly based on the task - GPT 5 ',
-        default: true,
-        icon: <SparkleIcon />
-    },
-    {
-        id: 'learn',
-        title: 'Study and learn',
-        tag: 'GPT-5.2',
-        val: 'gpt-5.2',
-        desc: 'Quizzes, guided learning, and more',
-        default: false,
-        icon: <GraduationCapIcon />
-    },
-    {
-        id: 'deeper',
-        title: 'Think deeper',
-        tag: 'GPT-5.2-pro',
-        val: 'gpt-5.2-pro',
-        desc: 'Better for more complex topics',
-        default: false,
-        icon: <MeshIcon />
-    },
-    {
-        id: 'search',
-        title: 'Search',
-        tag: 'GPT-5-nano',
-        val: 'gpt-5-nano',
-        desc: 'Answers with enhanced references',
-        default: false,
-        icon: <SearchIcon />
-    }
-];
-
-function getModels() {
-    const activeId = localStorage.getItem("activeProfileId") || "openai";
+export function getModels() {
+    const activeId = localStorage.getItem("activeProfileId") || provider[0];
     switch (activeId) {
-        case "openai":
+        case provider.OPENAI:
             return openai;
+        case provider.GROK:
+            return grok;
         default:
             return openai;
     }
 }
 
-export const models = getModels();
-export const DEFAULT_MODEL = models.find(model => model.default)?.val || "";
+export function getValueOfDefaultModel() {
+    return getModels().find(model => model.default)?.val || "";
+}
+
+export function getIdOfDefaultModel() {
+    return getModels().find(model => model.default)?.id || "";
+}
