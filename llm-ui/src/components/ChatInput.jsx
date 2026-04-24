@@ -6,16 +6,15 @@ import {
 } from "./icons";
 import sendIconImg from "../../static/images/SendIcon.png";
 import { getModels } from "../config/models";
+import { useChatContext } from "../context/ChatContext";
 
 // 1. Isolate the dropdown state to prevent re-rendering the whole input area
 /**
  * A dropdown component to select the specific model for the active provider.
  * Isolated to prevent re-rendering the whole input area when toggled.
- * 
- * @param {Object} props - The component props.
- * @param {React.MutableRefObject} props.choosenModelRef - Ref containing the currently selected model object.
  */
-const ModelSelector = memo(({ choosenModelRef }) => {
+const ModelSelector = memo(() => {
+    const { choosenModelRef } = useChatContext();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [selectedModel, setSelectedModel] = useState(choosenModelRef.current.id);
     const menuRef = useRef(null);
@@ -80,30 +79,21 @@ const ModelSelector = memo(({ choosenModelRef }) => {
 /**
  * The main input area for composing and sending messages.
  * Includes the textarea, attachment buttons, and the model selector.
- * Memoized to prevent re-renders during message streaming.
- * 
- * @param {Object} props - The component props.
- * @param {string} props.inputValue - The current text in the textarea.
- * @param {Function} props.onInputChange - Callback for textarea value changes.
- * @param {Function} props.onKeyDown - Callback for keyboard events (e.g., Enter to send).
- * @param {Function} props.onSend - Callback to trigger sending the message.
- * @param {boolean} props.isStreaming - Whether a response is currently being streamed.
- * @param {React.RefObject} props.textareaRef - Ref to the textarea element for auto-resizing.
- * @param {Object} props.activeProfile - The currently selected provider profile.
- * @param {React.MutableRefObject} props.choosenModelRef - Ref containing the selected model.
- * @param {string} props.providerName - Name of the active AI provider for the placeholder text.
+ * Consumes data from ChatContext to avoid prop drilling.
  */
-const ChatInput = memo(({
-    inputValue,
-    onInputChange,
-    onKeyDown,
-    onSend,
-    isStreaming,
-    textareaRef,
-    activeProfile,
-    choosenModelRef,
-    providerName
-}) => {
+const ChatInput = memo(() => {
+    const {
+        inputValue,
+        handleInput,
+        handleKeyDown,
+        handleSend,
+        isStreaming,
+        textareaRef,
+        activeProfile
+    } = useChatContext();
+
+    const providerName = activeProfile?.name;
+
     return (
         <footer className="input-area">
             <div className="input-wrapper">
@@ -113,8 +103,8 @@ const ChatInput = memo(({
                     placeholder={`Message ${providerName || "AI"} or @ mention a tab`}
                     rows="1"
                     value={inputValue}
-                    onChange={onInputChange}
-                    onKeyDown={onKeyDown}
+                    onChange={handleInput}
+                    onKeyDown={handleKeyDown}
                     disabled={isStreaming}
                 ></textarea>
 
@@ -124,13 +114,13 @@ const ChatInput = memo(({
                             <PlusIcon />
                         </button>
 
-                        <ModelSelector key={activeProfile.id} choosenModelRef={choosenModelRef} />
+                        <ModelSelector key={activeProfile.id} />
                     </div>
                     <div className="toolbar-right">
                         {inputValue.trim().length > 0 ? (
                             <button
                                 className={`icon-btn action-btn send-btn ${isStreaming ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                onClick={onSend}
+                                onClick={handleSend}
                                 title="Send message"
                                 disabled={isStreaming}
                             >

@@ -1,4 +1,4 @@
-import { useChat } from "./hooks/useChat";
+import { ChatProvider, useChatContext } from "./context/ChatContext";
 import Header from "./components/Header";
 import InitialView from "./components/InitialView";
 import MessageList from "./components/MessageList";
@@ -7,60 +7,36 @@ import { defaultProfiles } from "./config/profiles";
 
 /**
  * The main Chat component that serves as the entry point for the UI.
- * It utilizes the useChat hook to manage state and renders the high-level
- * layout including the Header, MessageList/InitialView, and ChatInput.
+ * It is wrapped in ChatProvider to provide state to all sub-components via context.
  */
 export default function Chat() {
-    const {
-        messages,
-        inputValue,
-        isFirstMessage,
-        isStreaming,
-        streamingMessage,
-        activeProfile,
-        choosenModelRef,
-        messagesEndRef,
-        textareaRef,
-        handleProfileChange,
-        handleInput,
-        handleSend,
-        handleKeyDown,
-        handleNewChat
-    } = useChat();
+    return (
+        <ChatProvider>
+            <ChatContent />
+        </ChatProvider>
+    );
+}
+
+/**
+ * The actual layout of the chat interface.
+ * Consumes the ChatContext to determine what to render.
+ */
+function ChatContent() {
+    const { isFirstMessage } = useChatContext();
 
     return (
         <div className="app-container">
-            <Header
-                onNewChat={handleNewChat}
-                profiles={defaultProfiles}
-                activeProfile={activeProfile}
-                onProfileChange={handleProfileChange}
-            />
+            <Header profiles={defaultProfiles} />
 
             <main className="main-content">
                 {isFirstMessage ? (
                     <InitialView greeting="Hi, what should we dive into today?" />
                 ) : (
-                    <MessageList
-                        messages={messages}
-                        streamingMessage={streamingMessage}
-                        messagesEndRef={messagesEndRef}
-                        providerName={activeProfile?.name}
-                    />
+                    <MessageList />
                 )}
             </main>
 
-            <ChatInput
-                inputValue={inputValue}
-                onInputChange={handleInput}
-                onKeyDown={handleKeyDown}
-                onSend={handleSend}
-                activeProfile={activeProfile}
-                choosenModelRef={choosenModelRef}
-                isStreaming={isStreaming}
-                textareaRef={textareaRef}
-                providerName={activeProfile?.name}
-            />
+            <ChatInput />
         </div>
     );
-}
+}

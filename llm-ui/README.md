@@ -12,7 +12,11 @@ The core visual building blocks of the application:
 - **`MessageItem.jsx`**: Renders an individual chat bubble. For assistant messages, it handles markdown parsing, syntax highlighting for code blocks, and provides a toolbar of actionable buttons (`BotActionButtons`).
 - **`ChatInput.jsx`**: The main input area for composing messages. It includes an auto-resizing textarea, attachment buttons, and an isolated `ModelSelector` dropdown. It is memoized to prevent re-renders during message streaming.
 
+### `src/context/`
+- **`ChatContext.jsx`**: The centralized state management layer. It uses the React Context API to provide the entire chat state (messages, streaming state, handlers, etc.) to all sub-components, effectively eliminating prop drilling.
+
 ### Application Roots
+- **`src/Chat.jsx`**: The root UI component. It wraps the application in the `ChatProvider` and defines the main layout structure.
 - **`src/main.jsx`**: The application entry point that bootstraps the React environment and mounts the `Chat` component.
 - **`src/index.css`**: The central styling hub, integrating Tailwind CSS and defining the application's visual language.
 
@@ -35,12 +39,13 @@ The core visual building blocks of the application:
  
 ## Core Interaction Flow
 
-The application follows a strict separation between UI representation and business logic:
+The application follows a strict separation between UI representation and business logic, utilizing Context for state distribution:
 
-1.  **State Orchestration (`useChat.js`)**: This custom hook acts as the central brain. It maintains the message history, handles the async streaming logic from the API, and manages UI-related states (like whether the AI is currently "thinking").
-2.  **UI Representation (`Chat.jsx`)**: This component is purely functional. It consumes the state and handlers from `useChat` and distributes them to sub-components like `Header`, `MessageList`, and `ChatInput`.
-3.  **Data Flow**:
-    *   User types in `ChatInput` → `handleInput` (hook) updates `inputValue`.
-    *   User hits Enter → `handleSend` (hook) triggers the API call.
-    *   API yields deltas → `streamingMessage` (hook) updates.
-    *   `Chat.jsx` re-renders, passing updated data to `MessageList`.
+1.  **State Orchestration (`useChat.js`)**: This custom hook acts as the central brain. It maintains the message history, handles the async streaming logic from the API, and manages UI-related states.
+2.  **State Distribution (`ChatContext.jsx`)**: The `ChatProvider` consumes the `useChat` hook and exposes its values to the entire component tree. This allows components at any depth to access exactly what they need via `useChatContext()`.
+3.  **UI Representation (`Chat.jsx`)**: This component acts as a high-level layout shell. It initializes the `ChatProvider` and organizes the primary segments of the UI (`Header`, `MessageList`, `ChatInput`).
+4.  **Data Flow**:
+    *   User types in `ChatInput` → Consumes `handleInput` from context to update `inputValue`.
+    *   User hits Enter → Consumes `handleSend` from context to trigger the API call.
+    *   API yields deltas → Hook updates state in context.
+    *   Sub-components (like `MessageList`) automatically re-render by subscribing to the context changes.

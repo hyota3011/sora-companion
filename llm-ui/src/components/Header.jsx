@@ -3,18 +3,19 @@ import { EditIcon, ChevronDownIcon, MoreHorizontalIcon, XIcon } from "./icons";
 import keyIcon from "../../static/images/KeyIcon.png";
 import { saveApiKey } from "../api/keys";
 import { _getApiKey } from "../config/profiles";
+import { useChatContext } from "../context/ChatContext";
 
 const VITE_PROFILE = import.meta.env.VITE_PROFILE;
 
 /**
  * A dropdown component for selecting the active LLM provider profile.
+ * Consumes data from ChatContext to avoid prop drilling.
  * 
  * @param {Object} props - The component props.
  * @param {Array} props.profiles - List of available provider profiles.
- * @param {Object} props.activeProfile - The currently selected profile.
- * @param {Function} props.onProfileChange - Callback fired when a new profile is selected.
  */
-function ProfileSelector({ profiles, activeProfile, onProfileChange }) {
+function ProfileSelector({ profiles }) {
+    const { activeProfile, handleProfileChange } = useChatContext();
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
 
@@ -29,7 +30,7 @@ function ProfileSelector({ profiles, activeProfile, onProfileChange }) {
     }, []);
 
     const handleSelect = (id) => {
-        onProfileChange(id);
+        handleProfileChange(id);
         setIsOpen(false);
     };
 
@@ -41,7 +42,7 @@ function ProfileSelector({ profiles, activeProfile, onProfileChange }) {
                 onClick={() => setIsOpen(!isOpen)}
                 style={{ backgroundColor: '#fff' }}
             >
-                <span>{activeProfile.name}</span>
+                <span>{activeProfile?.name}</span>
                 <ChevronDownIcon />
             </button>
 
@@ -50,7 +51,7 @@ function ProfileSelector({ profiles, activeProfile, onProfileChange }) {
                     {profiles.map((p) => (
                         <button
                             key={p.id}
-                            className={`dropdown-item ${activeProfile.id === p.id ? 'active' : ''}`}
+                            className={`dropdown-item ${activeProfile?.id === p.id ? 'active' : ''}`}
                             onClick={() => handleSelect(p.id)}
                         >
                             <div className="dropdown-item-content">
@@ -67,14 +68,13 @@ function ProfileSelector({ profiles, activeProfile, onProfileChange }) {
 /**
  * The top navigation header of the chat interface.
  * Contains the new chat button, profile selector, and API key management.
+ * Consumes data from ChatContext to avoid prop drilling.
  * 
  * @param {Object} props - The component props.
- * @param {Function} props.onNewChat - Callback to start a new chat session.
  * @param {Array} props.profiles - List of available provider profiles.
- * @param {Object} props.activeProfile - The currently selected profile.
- * @param {Function} props.onProfileChange - Callback fired when a new profile is selected.
  */
-export default function Header({ onNewChat, profiles, activeProfile, onProfileChange }) {
+export default function Header({ profiles }) {
+    const { activeProfile, handleNewChat } = useChatContext();
 
     const handleSetKey = async () => {
         if (!activeProfile) return;
@@ -89,17 +89,13 @@ export default function Header({ onNewChat, profiles, activeProfile, onProfileCh
     return (
         <header className="header">
             <div className="header-left">
-                <button className="icon-btn" title="New Chat" onClick={onNewChat}>
+                <button className="icon-btn" title="New Chat" onClick={handleNewChat}>
                     <EditIcon />
                 </button>
 
                 {profiles && activeProfile && (
                     <>
-                        <ProfileSelector
-                            profiles={profiles}
-                            activeProfile={activeProfile}
-                            onProfileChange={onProfileChange}
-                        />
+                        <ProfileSelector profiles={profiles} />
                         <button className="icon-btn" title="Set API Key" onClick={handleSetKey}>
                             <img src={keyIcon} alt="Key" style={{ width: '16px', height: '16px' }} />
                         </button>

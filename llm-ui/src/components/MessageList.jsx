@@ -1,14 +1,13 @@
 import { memo } from 'react';
 import MessageItem from "./MessageItem";
+import { useChatContext } from "../context/ChatContext";
 
 /**
  * Memoized component to render the static list of historical messages.
  * Prevents unnecessary re-renders of the entire history during streaming.
- * 
- * @param {Object} props - The component props.
- * @param {Array} props.messages - The array of historical message objects.
  */
-const StaticMessageList = memo(({ messages }) => {
+const StaticMessageList = memo(() => {
+    const { messages } = useChatContext();
     return (
         <>
             {messages.map((msg, index) => (
@@ -21,14 +20,12 @@ const StaticMessageList = memo(({ messages }) => {
 /**
  * Renders the full conversation view, including the static history
  * and the currently streaming message (if any).
- * 
- * @param {Object} props - The component props.
- * @param {Array} props.messages - The historical messages array.
- * @param {Object|null} props.streamingMessage - The active streaming message object, or null.
- * @param {React.RefObject} props.messagesEndRef - Ref to the bottom of the message list for auto-scrolling.
- * @param {string} props.providerName - Name of the active AI provider to display in the disclaimer.
+ * Consumes data from ChatContext to avoid prop drilling.
  */
-export default function MessageList({ messages, streamingMessage, messagesEndRef, providerName }) {
+export default function MessageList() {
+    const { streamingMessage, messagesEndRef, activeProfile } = useChatContext();
+    const providerName = activeProfile?.name;
+
     return (
         <div className="chat-view">
             <div className="disclaimer">{providerName || "AI"} is an AI and may make mistakes.</div>
@@ -36,7 +33,7 @@ export default function MessageList({ messages, streamingMessage, messagesEndRef
                 <span className="divider-text">Today</span>
             </div>
             <div className="messages-container">
-                <StaticMessageList messages={messages} />
+                <StaticMessageList />
                 {streamingMessage && <MessageItem message={streamingMessage} />}
                 <div ref={messagesEndRef} />
             </div>
