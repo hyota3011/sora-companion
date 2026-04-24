@@ -5,6 +5,11 @@ import MessageList from "./components/MessageList";
 import ChatInput from "./components/ChatInput";
 import { defaultProfiles } from "./config/profiles";
 
+/**
+ * The main Chat component that serves as the entry point for the UI.
+ * It utilizes the useChat hook to manage state and renders the high-level
+ * layout including the Header, MessageList/InitialView, and ChatInput.
+ */
 export default function Chat() {
     const {
         messages,

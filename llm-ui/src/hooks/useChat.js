@@ -3,6 +3,13 @@ import { streamChat } from "../api/index.js";
 import { getValueOfDefaultModel, getDefaultModel } from "../config/models.jsx";
 import { defaultProfiles, getActiveProfile } from "../config/profiles.js";
 
+/**
+ * Custom hook that manages the chat state and logic.
+ * This includes message history, input handling, streaming state,
+ * profile/model selection, and automatic scrolling.
+ * 
+ * @returns {Object} An object containing chat state and handler functions.
+ */
 export function useChat() {
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState("");
@@ -15,6 +22,11 @@ export function useChat() {
     const messagesEndRef = useRef(null);
     const textareaRef = useRef(null);
 
+    /**
+     * Updates the active provider profile and resets the chosen model to the default for that provider.
+     * 
+     * @param {string} profileId - The ID of the profile to switch to.
+     */
     const handleProfileChange = useCallback((profileId) => {
         const newProfile = defaultProfiles.find((p) => p.id === profileId);
         if (newProfile) {
@@ -32,6 +44,11 @@ export function useChat() {
         scrollToBottom();
     }, [messages, streamingMessage]);
 
+    /**
+     * Handles text input changes and manages the auto-resizing of the textarea.
+     * 
+     * @param {React.ChangeEvent<HTMLTextAreaElement>} e - The input event.
+     */
     const handleInput = useCallback((e) => {
         const target = e.target;
         setInputValue(target.value);
@@ -41,6 +58,10 @@ export function useChat() {
         target.style.height = Math.min(target.scrollHeight, 120) + "px";
     }, []);
 
+    /**
+     * Sends the current input value as a message and initiates the streaming response from the AI.
+     * Handles context window management and error display.
+     */
     const handleSend = useCallback(async () => {
         const text = inputValue.trim();
         if (!text || isStreaming) return;
@@ -118,6 +139,11 @@ export function useChat() {
         }
     }, [inputValue, isStreaming, isFirstMessage, activeProfile, messages]);
 
+    /**
+     * Handles keydown events in the textarea, specifically "Enter" for sending messages.
+     * 
+     * @param {React.KeyboardEvent<HTMLTextAreaElement>} e - The keyboard event.
+     */
     const handleKeyDown = useCallback(
         (e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -128,6 +154,9 @@ export function useChat() {
         [handleSend]
     );
 
+    /**
+     * Resets the chat state to start a new conversation.
+     */
     const handleNewChat = () => {
         setMessages([]);
         setIsFirstMessage(true);

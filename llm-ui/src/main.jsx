@@ -1,3 +1,7 @@
+/**
+ * Application entry point.
+ * Initializes the React root and renders the main Chat component.
+ */
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'

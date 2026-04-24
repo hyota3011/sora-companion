@@ -7,6 +7,12 @@ import { memo } from "react";
 
 import { LikeIcon, DislikeIcon, ShareIcon, CopyIcon, RefreshIcon, EditIcon } from "./icons";
 
+/**
+ * A toolbar of actionable buttons (Like, Dislike, Copy, etc.) for assistant messages.
+ * 
+ * @param {Object} props - The component props.
+ * @param {string} props.text - The message text to be copied to the clipboard.
+ */
 export function BotActionButtons({ text }) {
     const handleCopy = () => {
         console.log("received text", text);
@@ -39,6 +45,13 @@ export function BotActionButtons({ text }) {
     );
 }
 
+/**
+ * Renders an individual chat message bubble (user or assistant).
+ * Handles markdown rendering and syntax highlighting for assistant messages.
+ * 
+ * @param {Object} props - The component props.
+ * @param {Object} props.message - The message object containing sender and text.
+ */
 const MessageItem = memo(function MessageItem({ message }) {
     const isBot = message.sender === 'assistant';
     const isStreaming = message.isStreaming;

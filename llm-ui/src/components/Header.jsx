@@ -6,6 +6,14 @@ import { _getApiKey } from "../config/profiles";
 
 const VITE_PROFILE = import.meta.env.VITE_PROFILE;
 
+/**
+ * A dropdown component for selecting the active LLM provider profile.
+ * 
+ * @param {Object} props - The component props.
+ * @param {Array} props.profiles - List of available provider profiles.
+ * @param {Object} props.activeProfile - The currently selected profile.
+ * @param {Function} props.onProfileChange - Callback fired when a new profile is selected.
+ */
 function ProfileSelector({ profiles, activeProfile, onProfileChange }) {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
@@ -56,6 +64,16 @@ function ProfileSelector({ profiles, activeProfile, onProfileChange }) {
     );
 }
 
+/**
+ * The top navigation header of the chat interface.
+ * Contains the new chat button, profile selector, and API key management.
+ * 
+ * @param {Object} props - The component props.
+ * @param {Function} props.onNewChat - Callback to start a new chat session.
+ * @param {Array} props.profiles - List of available provider profiles.
+ * @param {Object} props.activeProfile - The currently selected profile.
+ * @param {Function} props.onProfileChange - Callback fired when a new profile is selected.
+ */
 export default function Header({ onNewChat, profiles, activeProfile, onProfileChange }) {
 
     const handleSetKey = async () => {

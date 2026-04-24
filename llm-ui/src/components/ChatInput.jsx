@@ -5,9 +5,16 @@ import {
     MicIcon
 } from "./icons";
 import sendIconImg from "../../static/images/SendIcon.png";
-import { getIdOfDefaultModel, getModels } from "../config/models";
+import { getModels } from "../config/models";
 
 // 1. Isolate the dropdown state to prevent re-rendering the whole input area
+/**
+ * A dropdown component to select the specific model for the active provider.
+ * Isolated to prevent re-rendering the whole input area when toggled.
+ * 
+ * @param {Object} props - The component props.
+ * @param {React.MutableRefObject} props.choosenModelRef - Ref containing the currently selected model object.
+ */
 const ModelSelector = memo(({ choosenModelRef }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [selectedModel, setSelectedModel] = useState(choosenModelRef.current.id);
@@ -70,6 +77,22 @@ const ModelSelector = memo(({ choosenModelRef }) => {
 });
 
 // 2. Memoize ChatInput to prevent re-renders when the parent (Chat.jsx) updates (e.g., during streaming)
+/**
+ * The main input area for composing and sending messages.
+ * Includes the textarea, attachment buttons, and the model selector.
+ * Memoized to prevent re-renders during message streaming.
+ * 
+ * @param {Object} props - The component props.
+ * @param {string} props.inputValue - The current text in the textarea.
+ * @param {Function} props.onInputChange - Callback for textarea value changes.
+ * @param {Function} props.onKeyDown - Callback for keyboard events (e.g., Enter to send).
+ * @param {Function} props.onSend - Callback to trigger sending the message.
+ * @param {boolean} props.isStreaming - Whether a response is currently being streamed.
+ * @param {React.RefObject} props.textareaRef - Ref to the textarea element for auto-resizing.
+ * @param {Object} props.activeProfile - The currently selected provider profile.
+ * @param {React.MutableRefObject} props.choosenModelRef - Ref containing the selected model.
+ * @param {string} props.providerName - Name of the active AI provider for the placeholder text.
+ */
 const ChatInput = memo(({
     inputValue,
     onInputChange,
