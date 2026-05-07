@@ -14,6 +14,8 @@ export * from './SparkleIcon';
 export * from './MeshIcon';
 export * from './GraduationCapIcon';
 export * from './SearchIcon';
+export * from './ZapIcon';
+export * from './BrainIcon';
 export * from './SendIcon';
 export * from './MicIcon';
 export * from './ImageIcon';

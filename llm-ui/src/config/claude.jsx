@@ -1,31 +1,31 @@
-import { SparkleIcon, MeshIcon, GraduationCapIcon, SearchIcon } from "../components/icons";
+import { ZapIcon, SparkleIcon, BrainIcon } from "../components/icons";
 
 export const claude = [
     {
         id: 'claude-haiku',
         title: 'Haiku',
-        tag: 'Haiku 3.5',
-        val: 'claude-3-5-haiku-20241022',
-        desc: 'Fast and lightweight Claude model',
+        tag: 'Haiku 4.5',
+        val: 'claude-haiku-4-5-20251001',
+        desc: 'Fast and lightweight — ideal for quick tasks',
         default: false,
-        icon: <SearchIcon />
+        icon: <ZapIcon />
     },
     {
         id: 'claude-sonnet',
         title: 'Sonnet',
         tag: 'Sonnet 4',
-        val: 'claude-sonnet-4-20250514',
-        desc: 'Balanced Claude model for everyday work',
+        val: 'claude-sonnet-4-6',
+        desc: 'Balanced performance for everyday work',
         default: true,
         icon: <SparkleIcon />
     },
     {
         id: 'claude-opus',
         title: 'Opus',
-        tag: 'Sonnet 3.7',
-        val: 'claude-3-7-sonnet-20250219',
-        desc: 'Strong for reasoning-heavy prompts',
+        tag: 'Opus 4',
+        val: 'claude-opus-4-7',
+        desc: 'Most intelligent — excels at complex reasoning',
         default: false,
-        icon: <SparkleIcon />
+        icon: <BrainIcon />
     }
 ];

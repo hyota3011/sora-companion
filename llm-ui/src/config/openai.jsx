@@ -1,40 +1,40 @@
-import { SparkleIcon, MeshIcon, GraduationCapIcon, SearchIcon } from "../components/icons";
+import { SearchIcon, ZapIcon, GraduationCapIcon, BrainIcon } from "../components/icons";
 
 export const openai = [
     {
         id: 'search',
         title: 'Search',
-        tag: 'GPT-5-nano',
+        tag: 'GPT-5 Nano',
         val: 'gpt-5-nano',
-        desc: 'Answers with enhanced references',
+        desc: 'Quick answers with web-enhanced references',
         default: false,
         icon: <SearchIcon />
     },
     {
         id: 'smart',
         title: 'Smart',
-        tag: 'GPT-5-mini',
+        tag: 'GPT-5 Mini',
         val: 'gpt-5-mini',
-        desc: 'Thinks deeply or quickly based on the task - GPT 5 ',
+        desc: 'Fast and capable for everyday tasks',
         default: true,
-        icon: <SparkleIcon />
+        icon: <ZapIcon />
     },
     {
         id: 'learn',
-        title: 'Study and learn',
+        title: 'Study',
         tag: 'GPT-5.2',
         val: 'gpt-5.2',
-        desc: 'Quizzes, guided learning, and more',
+        desc: 'Guided learning, quizzes, and explanations',
         default: false,
         icon: <GraduationCapIcon />
     },
     {
         id: 'deeper',
-        title: 'Think deeper',
-        tag: 'GPT-5.2-pro',
+        title: 'Think Deeper',
+        tag: 'GPT-5.2 Pro',
         val: 'gpt-5.2-pro',
-        desc: 'Better for more complex topics',
+        desc: 'Deep reasoning for complex problems',
         default: false,
-        icon: <MeshIcon />
+        icon: <BrainIcon />
     }
 ];
