@@ -5,17 +5,37 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { memo } from "react";
 
 
-import { LikeIcon, DislikeIcon, ShareIcon, CopyIcon, RefreshIcon, EditIcon } from "./icons";
+import {
+    LikeIcon,
+    LikeIconInverse,
+    DislikeIcon,
+    DislikeIconInverse,
+    ShareIcon,
+    CopyIcon,
+    RefreshIcon,
+    EditIcon
+} from "./icons";
+import { useChatContext } from "../context/ChatContext";
 
 /**
  * A toolbar of actionable buttons (Like, Dislike, Copy, etc.) for assistant messages.
  * 
  * @param {Object} props - The component props.
- * @param {string} props.text - The message text to be copied to the clipboard.
+ * @param {Object} props.message - The assistant message for this toolbar.
  */
-export function BotActionButtons({ text }) {
+export function BotActionButtons({ message }) {
+    const {
+        handleRefreshLastResponse,
+        handleEditLastUserMessage,
+        handleToggleMessageFeedback,
+        isStreaming
+    } = useChatContext();
+
+    const text = message.text;
+    const isLiked = message.feedback === "like";
+    const isDisliked = message.feedback === "dislike";
+
     const handleCopy = () => {
-        console.log("received text", text);
         if (text) {
             navigator.clipboard.writeText(text).catch(err => console.error("Failed to copy text:", err));
         }
@@ -23,22 +43,42 @@ export function BotActionButtons({ text }) {
 
     return (
         <div className="bot-actions px-4">
-            <button className="bot-action-btn" title="Like">
-                <LikeIcon />
+            <button
+                className={`bot-action-btn ${isLiked ? "active" : ""}`}
+                title="Like"
+                onClick={() => handleToggleMessageFeedback(message.id, "like")}
+                disabled={isStreaming}
+            >
+                {isLiked ? <LikeIconInverse /> : <LikeIcon />}
             </button>
-            <button className="bot-action-btn" title="Dislike">
-                <DislikeIcon />
+            <button
+                className={`bot-action-btn ${isDisliked ? "active" : ""}`}
+                title="Dislike"
+                onClick={() => handleToggleMessageFeedback(message.id, "dislike")}
+                disabled={isStreaming}
+            >
+                {isDisliked ? <DislikeIconInverse /> : <DislikeIcon />}
             </button>
-            <button className="bot-action-btn" title="Share">
+            <button className="bot-action-btn" title="Share" onClick={handleCopy}>
                 <ShareIcon />
             </button>
             <button className="bot-action-btn" title="Copy" onClick={handleCopy}>
                 <CopyIcon />
             </button>
-            <button className="bot-action-btn" title="Refresh">
+            <button
+                className="bot-action-btn"
+                title="Refresh"
+                onClick={handleRefreshLastResponse}
+                disabled={isStreaming}
+            >
                 <RefreshIcon />
             </button>
-            <button className="bot-action-btn" title="Edit">
+            <button
+                className="bot-action-btn"
+                title="Edit"
+                onClick={handleEditLastUserMessage}
+                disabled={isStreaming}
+            >
                 <EditIcon width={16} height={16} />
             </button>
         </div>
@@ -102,7 +142,7 @@ const MessageItem = memo(function MessageItem({ message }) {
                     </>
                 )}
             </div>
-            {isBot && !isStreaming && <BotActionButtons text={message.text} />}
+            {isBot && !isStreaming && <BotActionButtons message={message} />}
         </div>
     );
 });

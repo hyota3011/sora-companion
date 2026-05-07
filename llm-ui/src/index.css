@@ -159,6 +159,16 @@ body {
     color: #1a1a1a;
 }
 
+.bot-action-btn.active {
+    background-color: #1a1a1a;
+    color: #ffffff;
+}
+
+.bot-action-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
 /* Input Area */
 .input-area {
     padding: 12px 16px;

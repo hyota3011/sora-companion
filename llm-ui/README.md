@@ -22,6 +22,11 @@ If you only read one section, read this one:
 - Thumbnail previews for attached images
 - Remove attached images before send
 - Attached images remain part of sent user messages, so they can still be included in later requests while that message stays inside the context window
+- **Message Action Toolbar**: Actionable buttons on assistant responses for enhanced control
+- **Regenerate (Refresh)**: Resends the last user message to obtain a new response
+- **Message Editing**: Restores the last user message (including images) to the composer for quick modification
+- **Response Feedback**: Toggleable Like/Dislike buttons for rating assistant output
+- **Copy & Share**: Easy one-click copying of assistant messages to the clipboard
 
 ## Project structure
 
@@ -30,7 +35,7 @@ If you only read one section, read this one:
 - `Header.jsx`: top bar with new chat, provider selection, and API key actions
 - `InitialView.jsx`: empty-state screen before the first message
 - `MessageList.jsx`: renders chat history plus the current streaming message
-- `MessageItem.jsx`: renders each message bubble; assistant messages support markdown and code blocks, user messages can also render sent images
+- `MessageItem.jsx`: renders each message bubble; assistant messages support markdown, code blocks, and an action toolbar (Refresh, Edit, Feedback, Copy/Share); user messages can also render sent images
 - `ChatInput.jsx`: chat composer with textarea, attachment menu, drag-and-drop support, image previews, and model selector
 
 ### `src/context/`
@@ -39,7 +44,7 @@ If you only read one section, read this one:
 
 ### `src/hooks/`
 
-- `useChat.js`: the core workflow for message history, image attachment state, validation, streaming, and context window construction
+- `useChat.js`: the core workflow for message history, image attachment state, validation, streaming, and context window construction. Now includes handlers for message regeneration, editing history, and feedback toggling.
 
 ### `src/api/`
 
@@ -114,6 +119,24 @@ When working on multimodal requests, keep provider-specific formatting inside `i
 - If images stop reaching the backend, inspect `src/api/imageMessages.js` first.
 - Image persistence across later prompts is not a separate cache. It works because sent user messages, including `images`, remain in `messages` and are reused when the context window is built.
 - The number of earlier messages sent back to the API is controlled by `activeProfile.contextMessageCount`.
+
+## Message Action Toolbar
+
+The `BotActionButtons` component in `MessageItem.jsx` provides several ways to interact with the latest exchange. These actions are powered by shared logic in `useChat.js`:
+
+1.  **Refresh (`handleRefreshLastResponse`)**:
+    - Identifies the last user prompt before the current assistant message.
+    - Removes the current response and restarts the stream from that prompt.
+2.  **Edit (`handleEditLastUserMessage`)**:
+    - Removes the last user message and the following assistant response from the list.
+    - Moves the original text and all attached images back into the composer.
+    - Automatically focuses the textarea and adjusts its height to fit the restored content.
+3.  **Feedback (`handleToggleMessageFeedback`)**:
+    - Allows users to mark an assistant message with a "Like" or "Dislike".
+    - Uses unique message IDs to ensure feedback is applied to the correct item.
+    - Uses inverse icons to provide a clear "active" state visual.
+4.  **Copy/Share**:
+    - Uses the `navigator.clipboard` API to copy the message text. Both buttons currently share this logic for convenience.
 
 ## Workflow summary
 
