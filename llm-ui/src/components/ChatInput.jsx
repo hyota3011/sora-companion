@@ -204,6 +204,32 @@ const ChatInput = memo(() => {
         handleAddImageFiles(event.dataTransfer.files);
     };
 
+    const handlePaste = (event) => {
+        if (isStreaming) return;
+
+        const items = event.clipboardData?.items;
+        if (!items) return;
+
+        const files = [];
+        let hasText = false;
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith("image/")) {
+                const file = items[i].getAsFile();
+                if (file) files.push(file);
+            } else if (items[i].type === "text/plain") {
+                hasText = true;
+            }
+        }
+
+        if (files.length > 0) {
+            handleAddImageFiles(files);
+            if (!hasText) {
+                event.preventDefault();
+            }
+        }
+    };
+
     return (
         <footer className="input-area">
             <div
@@ -243,6 +269,7 @@ const ChatInput = memo(() => {
                     value={inputValue}
                     onChange={handleInput}
                     onKeyDown={handleKeyDown}
+                    onPaste={handlePaste}
                     disabled={isStreaming}
                 ></textarea>
 

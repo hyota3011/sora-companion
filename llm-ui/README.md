@@ -19,6 +19,7 @@ If you only read one section, read this one:
 - Persistent API key management
 - Image upload from file picker
 - Drag-and-drop images into the input area
+- Paste images directly from the clipboard
 - Thumbnail previews for attached images
 - Remove attached images before send
 - Attached images remain part of sent user messages, so they can still be included in later requests while that message stays inside the context window
@@ -69,10 +70,11 @@ If you only read one section, read this one:
 
 This is the most important newer behavior in the app.
 
-1. `ChatInput.jsx` lets users attach images in two ways:
+1. `ChatInput.jsx` lets users attach images in three ways:
    - file picker via the attachment menu
    - drag-and-drop onto the input area
-2. Both paths call `handleAddImageFiles` from `useChat.js`.
+   - pasting images directly from the clipboard
+2. All paths call `handleAddImageFiles` from `useChat.js`.
 3. `useChat.js` validates each file by:
    - checking MIME type starts with `image/`
    - reading it as a data URL
