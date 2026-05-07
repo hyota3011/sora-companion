@@ -1,4 +1,5 @@
 import { _getApiKey } from '../config/profiles'
+import { toOpenAICompatibleMessages } from "./imageMessages";
 /**
  * Sends a chat completion request to Grok and returns an async generator
  * that yields text content deltas as plain strings.
@@ -25,7 +26,7 @@ export async function* streamChat(messages, model, profile) {
         },
         body: JSON.stringify({
             model,
-            messages,
+            messages: toOpenAICompatibleMessages(messages),
             stream: true,
         }),
     });

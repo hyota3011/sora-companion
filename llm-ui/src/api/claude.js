@@ -1,4 +1,5 @@
 import { _getApiKey } from "../config/profiles";
+import { toClaudeMessages } from "./imageMessages";
 
 const ANTHROPIC_VERSION = "2023-06-01";
 
@@ -30,7 +31,7 @@ export async function* streamChat(messages, model, profile) {
         },
         body: JSON.stringify({
             model,
-            messages,
+            messages: toClaudeMessages(messages),
             max_tokens: maxTokens,
             stream: true,
         }),

@@ -3,6 +3,28 @@ import { streamChat } from "../api/index.js";
 import { getDefaultModel } from "../config/models.jsx";
 import { defaultProfiles, getActiveProfile } from "../config/profiles.js";
 
+function createImageId() {
+    return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error("Unable to read image"));
+        reader.readAsDataURL(file);
+    });
+}
+
+function validateImageData(dataUrl) {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("Invalid image file"));
+        image.src = dataUrl;
+    });
+}
+
 /**
  * Custom hook that manages the chat state and logic.
  * This includes message history, input handling, streaming state,
@@ -17,6 +39,8 @@ export function useChat() {
     const [isStreaming, setIsStreaming] = useState(false);
     const [streamingMessage, setStreamingMessage] = useState(null);
     const [activeProfile, setActiveProfile] = useState(getActiveProfile());
+    const [attachedImages, setAttachedImages] = useState([]);
+    const [attachmentError, setAttachmentError] = useState("");
     const choosenModelRef = useRef(getDefaultModel());
 
     const messagesEndRef = useRef(null);
@@ -58,22 +82,71 @@ export function useChat() {
         target.style.height = Math.min(target.scrollHeight, 120) + "px";
     }, []);
 
+    const handleAddImageFiles = useCallback(async (fileList) => {
+        const files = Array.from(fileList || []);
+        if (!files.length) return;
+
+        const validImages = [];
+        const invalidFiles = [];
+
+        for (const file of files) {
+            if (!file.type?.startsWith("image/")) {
+                invalidFiles.push(file.name);
+                continue;
+            }
+
+            try {
+                const dataUrl = await readFileAsDataUrl(file);
+                await validateImageData(dataUrl);
+
+                validImages.push({
+                    id: createImageId(),
+                    name: file.name,
+                    mimeType: file.type,
+                    dataUrl,
+                    size: file.size,
+                });
+            } catch (error) {
+                console.error("Image validation failed:", error);
+                invalidFiles.push(file.name);
+            }
+        }
+
+        if (validImages.length) {
+            setAttachedImages((prev) => [...prev, ...validImages]);
+        }
+
+        setAttachmentError(
+            invalidFiles.length
+                ? `${invalidFiles.length} file${invalidFiles.length === 1 ? "" : "s"} skipped because they were not valid images.`
+                : ""
+        );
+    }, []);
+
+    const handleRemoveImage = useCallback((imageId) => {
+        setAttachedImages((prev) => prev.filter((image) => image.id !== imageId));
+        setAttachmentError("");
+    }, []);
+
     /**
      * Sends the current input value as a message and initiates the streaming response from the AI.
      * Handles context window management and error display.
      */
     const handleSend = useCallback(async () => {
         const text = inputValue.trim();
-        if (!text || isStreaming) return;
+        const images = attachedImages;
+        if ((!text && images.length === 0) || isStreaming) return;
 
         if (isFirstMessage) {
             setIsFirstMessage(false);
         }
 
         // 1. Add user message
-        const newUserMsg = { text, sender: "user" };
+        const newUserMsg = { text, sender: "user", images };
         setMessages((prev) => [...prev, newUserMsg]);
         setInputValue("");
+        setAttachedImages([]);
+        setAttachmentError("");
 
         // Reset textarea height
         if (textareaRef.current) {
@@ -89,6 +162,7 @@ export function useChat() {
         const apiMessages = contextWindow.map((msg) => ({
             role: msg.sender === "user" ? "user" : "assistant",
             content: msg.text,
+            images: msg.images || [],
         }));
 
         // 3. Stream the response — provider-agnostic
@@ -137,7 +211,7 @@ export function useChat() {
         } finally {
             setIsStreaming(false);
         }
-    }, [inputValue, isStreaming, isFirstMessage, activeProfile, messages]);
+    }, [inputValue, attachedImages, isStreaming, isFirstMessage, activeProfile, messages]);
 
     /**
      * Handles keydown events in the textarea, specifically "Enter" for sending messages.
@@ -161,11 +235,15 @@ export function useChat() {
         setMessages([]);
         setIsFirstMessage(true);
         setInputValue("");
+        setAttachedImages([]);
+        setAttachmentError("");
     };
 
     return {
         messages,
         inputValue,
+        attachedImages,
+        attachmentError,
         isFirstMessage,
         isStreaming,
         streamingMessage,
@@ -175,6 +253,8 @@ export function useChat() {
         textareaRef,
         handleProfileChange,
         handleInput,
+        handleAddImageFiles,
+        handleRemoveImage,
         handleSend,
         handleKeyDown,
         handleNewChat,

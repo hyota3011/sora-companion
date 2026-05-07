@@ -55,6 +55,7 @@ export function BotActionButtons({ text }) {
 const MessageItem = memo(function MessageItem({ message }) {
     const isBot = message.sender === 'assistant';
     const isStreaming = message.isStreaming;
+    const hasImages = message.images?.length > 0;
 
     return (
         <div className={`message ${message.sender} ${isStreaming ? 'is-streaming' : ''}`}>
@@ -89,7 +90,16 @@ const MessageItem = memo(function MessageItem({ message }) {
                         >{message.text}</ReactMarkdown>
                     )
                 ) : (
-                    message.text
+                    <>
+                        {hasImages && (
+                            <div className="message-image-list">
+                                {message.images.map((image) => (
+                                    <img key={image.id} src={image.dataUrl} alt={image.name} />
+                                ))}
+                            </div>
+                        )}
+                        {message.text && <div>{message.text}</div>}
+                    </>
                 )}
             </div>
             {isBot && !isStreaming && <BotActionButtons text={message.text} />}
