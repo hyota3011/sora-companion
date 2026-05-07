@@ -146,6 +146,7 @@ const AttachmentMenu = memo(() => {
  * Consumes data from ChatContext to avoid prop drilling.
  */
 const ChatInput = memo(() => {
+    const [isDraggingImage, setIsDraggingImage] = useState(false);
     const {
         inputValue,
         attachedImages,
@@ -153,6 +154,7 @@ const ChatInput = memo(() => {
         handleInput,
         handleKeyDown,
         handleSend,
+        handleAddImageFiles,
         handleRemoveImage,
         isStreaming,
         textareaRef,
@@ -160,32 +162,79 @@ const ChatInput = memo(() => {
     } = useChatContext();
 
     const providerName = activeProfile?.name;
+    const dragDepthRef = useRef(0);
+
+    const hasImageFiles = (dataTransfer) => {
+        return Array.from(dataTransfer?.items || []).some((item) => (
+            item.kind === "file" && item.type.startsWith("image/")
+        ));
+    };
+
+    const handleDragEnter = (event) => {
+        if (isStreaming || !hasImageFiles(event.dataTransfer)) return;
+
+        event.preventDefault();
+        dragDepthRef.current += 1;
+        setIsDraggingImage(true);
+    };
+
+    const handleDragOver = (event) => {
+        if (isStreaming || !hasImageFiles(event.dataTransfer)) return;
+
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+    };
+
+    const handleDragLeave = (event) => {
+        if (isStreaming || !hasImageFiles(event.dataTransfer)) return;
+
+        event.preventDefault();
+        dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+        if (dragDepthRef.current === 0) {
+            setIsDraggingImage(false);
+        }
+    };
+
+    const handleDrop = (event) => {
+        if (isStreaming) return;
+
+        event.preventDefault();
+        dragDepthRef.current = 0;
+        setIsDraggingImage(false);
+        handleAddImageFiles(event.dataTransfer.files);
+    };
 
     return (
         <footer className="input-area">
-            {(attachedImages.length > 0 || attachmentError) && (
-                <div className="image-attachment-area" aria-live="polite">
-                    {attachedImages.length > 0 && (
-                        <div className="image-preview-list">
-                            {attachedImages.map((image) => (
-                                <div className="image-preview-item" key={image.id}>
-                                    <img src={image.dataUrl} alt={image.name} />
-                                    <button
-                                        className="image-remove-btn"
-                                        title={`Remove ${image.name}`}
-                                        onClick={() => handleRemoveImage(image.id)}
-                                        disabled={isStreaming}
-                                    >
-                                        <XIcon width={14} height={14} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    {attachmentError && <div className="attachment-error">{attachmentError}</div>}
-                </div>
-            )}
-            <div className="input-wrapper">
+            <div
+                className={`input-wrapper ${isDraggingImage ? "drag-active" : ""}`}
+                onDragEnter={handleDragEnter}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
+                {(attachedImages.length > 0 || attachmentError) && (
+                    <div className="image-attachment-area" aria-live="polite">
+                        {attachedImages.length > 0 && (
+                            <div className="image-preview-list">
+                                {attachedImages.map((image) => (
+                                    <div className="image-preview-item" key={image.id}>
+                                        <img src={image.dataUrl} alt={image.name} />
+                                        <button
+                                            className="image-remove-btn"
+                                            title={`Remove ${image.name}`}
+                                            onClick={() => handleRemoveImage(image.id)}
+                                            disabled={isStreaming}
+                                        >
+                                            <XIcon width={14} height={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {attachmentError && <div className="attachment-error">{attachmentError}</div>}
+                    </div>
+                )}
                 <textarea
                     ref={textareaRef}
                     id="chat-input"

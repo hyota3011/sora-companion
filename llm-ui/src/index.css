@@ -240,6 +240,11 @@ body {
     border-color: #d0d0d0;
 }
 
+.input-wrapper.drag-active {
+    border-color: #7c5f46;
+    box-shadow: 0 0 0 3px rgba(124, 95, 70, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
 textarea#chat-input {
     border: none;
     resize: none;

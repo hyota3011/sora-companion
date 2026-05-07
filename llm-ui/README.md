@@ -1,51 +1,124 @@
 # LLM Chat UI
 
-A modern, browser-based chat interface designed for seamless interaction with Large Language Models (LLMs). This project provides a clean and responsive UI for sending prompts and displaying AI-generated responses.
+A browser-based chat interface for working with multiple LLM providers from one UI. The app supports streaming responses, provider/model switching, API key storage, and image attachments in the composer.
 
-## Architecture & Components
+## What matters most
+
+If you only read one section, read this one:
+
+- `src/hooks/useChat.js` is the main state engine. It owns messages, streaming state, selected images, and send logic.
+- `src/context/ChatContext.jsx` exposes that state to the UI so components stay thin.
+- `src/components/ChatInput.jsx` is the composer surface. It handles typing, image upload, drag-and-drop, image preview, and send actions.
+- `src/api/index.js` dispatches requests to the active provider.
+- `src/api/imageMessages.js` is the image payload adapter. If image requests break, start here.
+
+## Current user-facing features
+
+- Text chat with streaming assistant responses
+- Provider switching and model switching
+- Persistent API key management
+- Image upload from file picker
+- Drag-and-drop images into the input area
+- Thumbnail previews for attached images
+- Remove attached images before send
+- Attached images remain part of sent user messages, so they can still be included in later requests while that message stays inside the context window
+
+## Project structure
 
 ### `src/components/`
-The core visual building blocks of the application:
-- **`Header.jsx`**: The top navigation header that contains the new chat button, profile selector, and API key management functionality.
-- **`InitialView.jsx`**: Displays the initial empty state of the chat with a welcome greeting.
-- **`MessageList.jsx`**: Renders the full conversation view. It optimizes performance by memoizing the static history (`StaticMessageList`) while seamlessly integrating the currently streaming message.
-- **`MessageItem.jsx`**: Renders an individual chat bubble. For assistant messages, it handles markdown parsing, syntax highlighting for code blocks, and provides a toolbar of actionable buttons (`BotActionButtons`).
-- **`ChatInput.jsx`**: The main input area for composing messages. It includes an auto-resizing textarea, attachment buttons, and an isolated `ModelSelector` dropdown. It is memoized to prevent re-renders during message streaming.
+
+- `Header.jsx`: top bar with new chat, provider selection, and API key actions
+- `InitialView.jsx`: empty-state screen before the first message
+- `MessageList.jsx`: renders chat history plus the current streaming message
+- `MessageItem.jsx`: renders each message bubble; assistant messages support markdown and code blocks, user messages can also render sent images
+- `ChatInput.jsx`: chat composer with textarea, attachment menu, drag-and-drop support, image previews, and model selector
 
 ### `src/context/`
-- **`ChatContext.jsx`**: The centralized state management layer. It uses the React Context API to provide the entire chat state (messages, streaming state, handlers, etc.) to all sub-components, effectively eliminating prop drilling.
 
-### Application Roots
-- **`src/Chat.jsx`**: The root UI component. It wraps the application in the `ChatProvider` and defines the main layout structure.
-- **`src/main.jsx`**: The application entry point that bootstraps the React environment and mounts the `Chat` component.
-- **`src/index.css`**: The central styling hub, integrating Tailwind CSS and defining the application's visual language.
+- `ChatContext.jsx`: provides the full chat state and handlers from `useChat`
 
-### Infrastructure
-- **`src/api/`**: The communication layer that integrates with LLM providers.
-  - **`index.js`**: Central dispatcher that provides a unified `streamChat` interface, routing requests to specific provider implementations.
-  - **`keys.js`**: Utilities for persistent management of API keys using the browser's storage API.
-  - **`openai.js`, `grok.js`, & `claude.js`**: Provider-specific implementations that handle authentication, request formatting, and Server-Sent Events (SSE) stream parsing.
-- **`src/config/`**: Manages application-wide configuration and model definitions.
-  - **`profiles.js`**: Defines available LLM providers, their API endpoints, and handles logic for switching between active profiles and retrieving associated API keys.
-  - **`models.jsx`**: Acts as a configuration provider for the UI, exporting functions to retrieve the list of models available for the current active profile.
-  - **`openai.jsx`, `grok.jsx`, & `claude.jsx`**: Metadata repositories for specific model families, including display names, descriptions, and corresponding UI icons.
-- **`src/hooks/`**: Custom React hooks that encapsulate complex stateful logic.
-  - **`useChat.js`**: The core business logic hook. It manages the entire chat lifecycle, including message history, real-time streaming, auto-resizing inputs, and profile management.
-- **`icon/`**: A directory containing all essential SVG icons and images used throughout the user interface.
-### Workflow
-- The application sends input messages from users to server then return messages and display them in the UI.
-- This application have some features like copy last message into clipboard, send last N messages of conversation to server to keep the context.
-- You can change the models based on combobox in Header.jsx, which changes the profile in profiles.js
- 
-## Core Interaction Flow
+### `src/hooks/`
 
-The application follows a strict separation between UI representation and business logic, utilizing Context for state distribution:
+- `useChat.js`: the core workflow for message history, image attachment state, validation, streaming, and context window construction
 
-1.  **State Orchestration (`useChat.js`)**: This custom hook acts as the central brain. It maintains the message history, handles the async streaming logic from the API, and manages UI-related states.
-2.  **State Distribution (`ChatContext.jsx`)**: The `ChatProvider` consumes the `useChat` hook and exposes its values to the entire component tree. This allows components at any depth to access exactly what they need via `useChatContext()`.
-3.  **UI Representation (`Chat.jsx`)**: This component acts as a high-level layout shell. It initializes the `ChatProvider` and organizes the primary segments of the UI (`Header`, `MessageList`, `ChatInput`).
-4.  **Data Flow**:
-    *   User types in `ChatInput` → Consumes `handleInput` from context to update `inputValue`.
-    *   User hits Enter → Consumes `handleSend` from context to trigger the API call.
-    *   API yields deltas → Hook updates state in context.
-    *   Sub-components (like `MessageList`) automatically re-render by subscribing to the context changes.
+### `src/api/`
+
+- `index.js`: provider-agnostic router for `streamChat`
+- `openai.js`, `grok.js`, `claude.js`: provider-specific request/stream handling
+- `imageMessages.js`: converts the app's internal message shape into the image format expected by each provider
+- `keys.js`: browser storage utilities for API keys
+
+### `src/config/`
+
+- `profiles.js`: provider config, endpoints, active profile lookup, and API key lookup
+- `models.jsx`: returns the models available for the current provider
+- `openai.jsx`, `grok.jsx`, `claude.jsx`: model metadata and icons
+
+### App entry and styling
+
+- `src/Chat.jsx`: top-level layout shell
+- `src/main.jsx`: React entry point
+- `src/index.css`: shared styling for layout, dropdowns, composer, thumbnails, and drag/drop states
+
+## Image attachment flow
+
+This is the most important newer behavior in the app.
+
+1. `ChatInput.jsx` lets users attach images in two ways:
+   - file picker via the attachment menu
+   - drag-and-drop onto the input area
+2. Both paths call `handleAddImageFiles` from `useChat.js`.
+3. `useChat.js` validates each file by:
+   - checking MIME type starts with `image/`
+   - reading it as a data URL
+   - loading it through `Image()` to confirm it is a valid image
+4. Valid images are stored in `attachedImages`.
+5. `ChatInput.jsx` renders those images as thumbnails above the textarea, each with a remove button.
+6. On send, the current user message is saved as `{ text, sender, images }`.
+7. Future requests reuse prior messages from the context window, so sent images are still available to the API until that message falls out of the configured context limit.
+
+## Request formatting rules
+
+Internally, the app keeps a simple message shape:
+
+```js
+{
+  role: "user" | "assistant",
+  content: string,
+  images: []
+}
+```
+
+Before sending to a provider, `src/api/imageMessages.js` transforms that shape:
+
+- OpenAI and Grok:
+  - messages with images become `content: [{ type: "text" }, { type: "image_url" }]`
+- Claude:
+  - messages with images become `content: [{ type: "text" }, { type: "image", source: { type: "base64", ... } }]`
+
+When working on multimodal requests, keep provider-specific formatting inside `imageMessages.js` rather than scattering it across UI code.
+
+## Core interaction flow
+
+1. The user types or attaches images in `ChatInput.jsx`.
+2. `ChatInput.jsx` calls handlers from `ChatContext`.
+3. `useChat.js` updates local UI state, builds the context window, and starts streaming.
+4. `src/api/index.js` routes the request to the active provider adapter.
+5. Provider adapters stream text deltas back into `useChat.js`.
+6. `MessageList.jsx` and `MessageItem.jsx` re-render automatically from context state.
+
+## Important implementation notes
+
+- If you want to change attachment behavior, start in `src/hooks/useChat.js` and `src/components/ChatInput.jsx`.
+- If previews look wrong or drag/drop feels broken, inspect `src/index.css`.
+- If images stop reaching the backend, inspect `src/api/imageMessages.js` first.
+- Image persistence across later prompts is not a separate cache. It works because sent user messages, including `images`, remain in `messages` and are reused when the context window is built.
+- The number of earlier messages sent back to the API is controlled by `activeProfile.contextMessageCount`.
+
+## Workflow summary
+
+- User input updates `inputValue`
+- Image attachments update `attachedImages`
+- Send creates a user message and clears the composer
+- The last `N` messages are converted into API messages
+- The provider response streams back into the assistant message list
