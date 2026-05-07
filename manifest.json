@@ -14,10 +14,10 @@
     "default_title": "Open Sora"
   },
   "icons": {
-    "16": "images/seal-16.png",
-    "32": "images/seal-32.png",
-    "64": "images/seal-64.png",
-    "128": "images/seal-128.png"
+    "16": "images/sora-16.png",
+    "32": "images/sora-32.png",
+    "64": "images/sora-64.png",
+    "128": "images/sora-128.png"
   },
   "side_panel": {
     "default_path": "llm-ui/dist/index.html"
