@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { streamChat } from "../api/index.js";
-import { getValueOfDefaultModel, getDefaultModel } from "../config/models.jsx";
+import { getDefaultModel } from "../config/models.jsx";
 import { defaultProfiles, getActiveProfile } from "../config/profiles.js";
 
 /**

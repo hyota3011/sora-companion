@@ -24,11 +24,11 @@ The core visual building blocks of the application:
 - **`src/api/`**: The communication layer that integrates with LLM providers.
   - **`index.js`**: Central dispatcher that provides a unified `streamChat` interface, routing requests to specific provider implementations.
   - **`keys.js`**: Utilities for persistent management of API keys using the browser's storage API.
-  - **`openai.js` & `grok.js`**: Provider-specific implementations that handle authentication, request formatting, and Server-Sent Events (SSE) stream parsing.
+  - **`openai.js`, `grok.js`, & `claude.js`**: Provider-specific implementations that handle authentication, request formatting, and Server-Sent Events (SSE) stream parsing.
 - **`src/config/`**: Manages application-wide configuration and model definitions.
   - **`profiles.js`**: Defines available LLM providers, their API endpoints, and handles logic for switching between active profiles and retrieving associated API keys.
   - **`models.jsx`**: Acts as a configuration provider for the UI, exporting functions to retrieve the list of models available for the current active profile.
-  - **`openai.jsx` & `grok.jsx`**: Metadata repositories for specific model families, including display names, descriptions, and corresponding UI icons.
+  - **`openai.jsx`, `grok.jsx`, & `claude.jsx`**: Metadata repositories for specific model families, including display names, descriptions, and corresponding UI icons.
 - **`src/hooks/`**: Custom React hooks that encapsulate complex stateful logic.
   - **`useChat.js`**: The core business logic hook. It manages the entire chat lifecycle, including message history, real-time streaming, auto-resizing inputs, and profile management.
 - **`icon/`**: A directory containing all essential SVG icons and images used throughout the user interface.

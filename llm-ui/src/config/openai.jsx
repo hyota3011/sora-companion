@@ -7,7 +7,7 @@ export const openai = [
         tag: 'GPT-5-nano',
         val: 'gpt-5-nano',
         desc: 'Answers with enhanced references',
-        default: true,
+        default: false,
         icon: <SearchIcon />
     },
     {
@@ -16,7 +16,7 @@ export const openai = [
         tag: 'GPT-5-mini',
         val: 'gpt-5-mini',
         desc: 'Thinks deeply or quickly based on the task - GPT 5 ',
-        default: false,
+        default: true,
         icon: <SparkleIcon />
     },
     {

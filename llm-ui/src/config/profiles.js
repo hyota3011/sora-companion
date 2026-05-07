@@ -3,6 +3,7 @@ import { getApiKey, saveApiKey } from "../api/keys";
 export const provider = {
     OPENAI: "openai",
     //GEMINI: "gemini",
+    CLAUDE: "claude",
     GROK: "grok"
 };
 
@@ -24,6 +25,13 @@ export const defaultProfiles = [
         name: "Grok",
         endpoint: "https://api.x.ai/v1/chat/completions",
         contextMessageCount: 20,
+    },
+    {
+        id: provider.CLAUDE,
+        name: "Claude",
+        endpoint: "https://api.anthropic.com/v1/messages",
+        contextMessageCount: 20,
+        maxTokens: 4096,
     }
 ];
 
@@ -34,8 +42,10 @@ export const getActiveProfile = () => {
 
 function getFromEnv(id) {
     switch (id) {
+        case provider.CLAUDE:
+            return import.meta.env.VITE_ANTHROPIC_KEY;
         case provider.GROK:
-            return import.meta.env.VITE_GROK_KEY;
+            return import.meta.env.VITE_XAI_KEY;
         case provider.OPENAI:
             return import.meta.env.VITE_OPENAI_KEY;
         default:
@@ -43,8 +53,10 @@ function getFromEnv(id) {
     }
 }
 
-export async function _getApiKey() {
-    const profile = getActiveProfile();
+export async function _getApiKey(profileId) {
+    const profile = profileId
+        ? defaultProfiles.find(p => p.id.toLowerCase() === profileId.toLowerCase())
+        : getActiveProfile();
     if (!profile || !profile.id) return null;
     let key = await getApiKey(profile.id);
     if (!key) {

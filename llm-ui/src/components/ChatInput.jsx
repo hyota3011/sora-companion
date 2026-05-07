@@ -5,7 +5,7 @@ import {
     MicIcon
 } from "./icons";
 import sendIconImg from "../../static/images/SendIcon.png";
-import { getModels } from "../config/models";
+import { getDefaultModel, getModels } from "../config/models";
 import { useChatContext } from "../context/ChatContext";
 
 // 1. Isolate the dropdown state to prevent re-rendering the whole input area
@@ -16,7 +16,7 @@ import { useChatContext } from "../context/ChatContext";
 const ModelSelector = memo(() => {
     const { choosenModelRef } = useChatContext();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [selectedModel, setSelectedModel] = useState(choosenModelRef.current.id);
+    const [selectedModel, setSelectedModel] = useState(() => getDefaultModel()?.id);
     const menuRef = useRef(null);
 
     const models = getModels();

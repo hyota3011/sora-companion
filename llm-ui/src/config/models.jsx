@@ -1,5 +1,6 @@
 import { openai } from './openai';
 import { grok } from './grok';
+import { claude } from './claude';
 import { provider } from './profiles';
 
 /**
@@ -14,6 +15,8 @@ export function getModels() {
             return openai;
         case provider.GROK:
             return grok;
+        case provider.CLAUDE:
+            return claude;
         default:
             return openai;
     }
