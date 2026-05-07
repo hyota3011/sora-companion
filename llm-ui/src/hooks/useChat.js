@@ -274,19 +274,6 @@ export function useChat() {
         });
     }, [isStreaming, messages]);
 
-    const handleToggleMessageFeedback = useCallback((messageId, feedback) => {
-        if (!messageId) return;
-
-        setMessages((prev) => prev.map((msg) => {
-            if (msg.id !== messageId) return msg;
-
-            return {
-                ...msg,
-                feedback: msg.feedback === feedback ? null : feedback,
-            };
-        }));
-    }, []);
-
     /**
      * Handles keydown events in the textarea, specifically "Enter" for sending messages.
      *
@@ -332,7 +319,6 @@ export function useChat() {
         handleSend,
         handleRefreshLastResponse,
         handleEditLastUserMessage,
-        handleToggleMessageFeedback,
         handleKeyDown,
         handleNewChat,
     };

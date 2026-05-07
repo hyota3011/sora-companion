@@ -131,11 +131,7 @@ The `BotActionButtons` component in `MessageItem.jsx` provides several ways to i
     - Removes the last user message and the following assistant response from the list.
     - Moves the original text and all attached images back into the composer.
     - Automatically focuses the textarea and adjusts its height to fit the restored content.
-3.  **Feedback (`handleToggleMessageFeedback`)**:
-    - Allows users to mark an assistant message with a "Like" or "Dislike".
-    - Uses unique message IDs to ensure feedback is applied to the correct item.
-    - Uses inverse icons to provide a clear "active" state visual.
-4.  **Copy/Share**:
+3.  **Copy/Share**:
     - Uses the `navigator.clipboard` API to copy the message text. Both buttons currently share this logic for convenience.
 
 ## Workflow summary

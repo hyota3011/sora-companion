@@ -6,10 +6,6 @@ import { memo } from "react";
 
 
 import {
-    LikeIcon,
-    LikeIconInverse,
-    DislikeIcon,
-    DislikeIconInverse,
     ShareIcon,
     CopyIcon,
     RefreshIcon,
@@ -27,7 +23,6 @@ export function BotActionButtons({ message }) {
     const {
         handleRefreshLastResponse,
         handleEditLastUserMessage,
-        handleToggleMessageFeedback,
         isStreaming
     } = useChatContext();
 
@@ -43,22 +38,6 @@ export function BotActionButtons({ message }) {
 
     return (
         <div className="bot-actions px-4">
-            <button
-                className={`bot-action-btn ${isLiked ? "active" : ""}`}
-                title="Like"
-                onClick={() => handleToggleMessageFeedback(message.id, "like")}
-                disabled={isStreaming}
-            >
-                {isLiked ? <LikeIconInverse /> : <LikeIcon />}
-            </button>
-            <button
-                className={`bot-action-btn ${isDisliked ? "active" : ""}`}
-                title="Dislike"
-                onClick={() => handleToggleMessageFeedback(message.id, "dislike")}
-                disabled={isStreaming}
-            >
-                {isDisliked ? <DislikeIconInverse /> : <DislikeIcon />}
-            </button>
             <button className="bot-action-btn" title="Share" onClick={handleCopy}>
                 <ShareIcon />
             </button>
