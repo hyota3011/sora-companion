@@ -7,7 +7,7 @@ export const claude = [
         tag: 'Haiku 4.5',
         val: 'claude-haiku-4-5-20251001',
         desc: 'Fast and lightweight — ideal for quick tasks',
-        default: false,
+        default: true,
         icon: <ZapIcon />
     },
     {
@@ -16,7 +16,7 @@ export const claude = [
         tag: 'Sonnet 4',
         val: 'claude-sonnet-4-6',
         desc: 'Balanced performance for everyday work',
-        default: true,
+        default: false,
         icon: <SparkleIcon />
     },
     {
