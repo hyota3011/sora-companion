@@ -75,10 +75,6 @@ export function useChat() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages, streamingMessage]);
-
     /**
      * Handles text input changes and manages the auto-resizing of the textarea.
      *
