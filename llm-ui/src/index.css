@@ -108,6 +108,19 @@ body {
     padding-bottom: 20px;
 }
 
+.compact-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: rgba(124, 95, 70, 0.08);
+    border: 1px solid rgba(124, 95, 70, 0.25);
+    border-radius: 8px;
+    font-size: 13px;
+    color: #7c5f46;
+    font-weight: 500;
+}
+
 .message {
     display: flex;
     flex-direction: column;

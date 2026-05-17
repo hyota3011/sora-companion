@@ -2,6 +2,16 @@ import { memo } from 'react';
 import MessageItem from "./MessageItem";
 import { useChatContext } from "../context/ChatContext";
 
+const CompactBanner = memo(() => {
+    const { compactMemory } = useChatContext();
+    if (!compactMemory) return null;
+    return (
+        <div className="compact-banner">
+            <span>Conversation compacted — context summary active</span>
+        </div>
+    );
+});
+
 /**
  * Memoized component to render the static list of historical messages.
  * Prevents unnecessary re-renders of the entire history during streaming.
@@ -33,6 +43,7 @@ export default function MessageList() {
                 <span className="divider-text">Today</span>
             </div>
             <div className="messages-container">
+                <CompactBanner />
                 <StaticMessageList />
                 {streamingMessage && <MessageItem message={streamingMessage} />}
                 <div ref={messagesEndRef} />

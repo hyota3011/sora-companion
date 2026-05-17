@@ -21,6 +21,9 @@ export async function* streamChat(messages, model, profile) {
         throw new Error(`API KEY is missing for ${profile.name}.`);
     }
 
+    const systemText = messages.filter(m => m.role === "system").map(m => m.content).join("\n\n");
+    const chatMessages = messages.filter(m => m.role !== "system");
+
     const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -31,9 +34,10 @@ export async function* streamChat(messages, model, profile) {
         },
         body: JSON.stringify({
             model,
-            messages: toClaudeMessages(messages),
+            messages: toClaudeMessages(chatMessages),
             max_tokens: maxTokens,
             stream: true,
+            ...(systemText ? { system: systemText } : {}),
         }),
     });
 

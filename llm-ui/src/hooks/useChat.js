@@ -52,6 +52,7 @@ export function useChat() {
     const [activeProfile, setActiveProfile] = useState(getActiveProfile());
     const [attachedImages, setAttachedImages] = useState([]);
     const [attachmentError, setAttachmentError] = useState("");
+    const [compactMemory, setCompactMemory] = useState(null);
     const choosenModelRef = useRef(getDefaultModel());
 
     const messagesEndRef = useRef(null);
@@ -139,12 +140,17 @@ export function useChat() {
         const contextLimit = activeProfile?.contextMessageCount || 20;
         const contextWindow = sourceMessages.slice(-contextLimit);
 
-        return contextWindow.map((msg) => ({
+        const mapped = contextWindow.map((msg) => ({
             role: msg.sender === "user" ? "user" : "assistant",
             content: msg.text,
             images: msg.images || [],
         }));
-    }, [activeProfile]);
+
+        if (compactMemory) {
+            return [{ role: "system", content: `Previous conversation summary:\n${compactMemory}`, images: [] }, ...mapped];
+        }
+        return mapped;
+    }, [activeProfile, compactMemory]);
 
     const streamAssistantResponse = useCallback(async (apiMessages) => {
         setStreamingMessage({
@@ -202,11 +208,59 @@ export function useChat() {
         }
     }, [activeProfile]);
 
+    const handleCompact = useCallback(async () => {
+        if (isStreaming || messages.length === 0) return;
+
+        setIsStreaming(true);
+        setStreamingMessage({ text: "...thinking", sender: "assistant", isStreaming: true });
+
+        const compactApiMessages = [
+            ...messages.map(msg => ({
+                role: msg.sender === "user" ? "user" : "assistant",
+                content: msg.text,
+                images: msg.images || [],
+            })),
+            {
+                role: "user",
+                content: "Please provide a concise summary of the above conversation. Focus on key decisions, facts, and context that would be needed to continue the conversation. Be brief and factual.",
+                images: [],
+            },
+        ];
+
+        try {
+            let summary = "";
+            for await (const delta of streamChat(compactApiMessages, choosenModelRef.current.val, activeProfile)) {
+                summary += delta;
+                setStreamingMessage({ text: summary, sender: "assistant", isStreaming: true });
+            }
+            setStreamingMessage(null);
+            setCompactMemory(summary);
+            setMessages([]);
+        } catch (error) {
+            console.error("Compact error:", error);
+            let displayError = error.message === "Failed to fetch" ? "Invalid API Key or Network error" : error.message;
+            setMessages(prev => [
+                ...prev,
+                { id: createId(), text: displayError, sender: "assistant", isError: true, feedback: null },
+            ]);
+            setStreamingMessage(null);
+        } finally {
+            setIsStreaming(false);
+        }
+    }, [isStreaming, messages, activeProfile]);
+
     /**
      * Sends the current input value as a message and initiates the streaming response from the AI.
      * Handles context window management and error display.
      */
     const handleSend = useCallback(async () => {
+        if (inputValue.trim() === "/compact") {
+            setInputValue("");
+            if (textareaRef.current) textareaRef.current.style.height = "auto";
+            await handleCompact();
+            return;
+        }
+
         const text = inputValue.trim();
         const images = attachedImages;
         if ((!text && images.length === 0) || isStreaming) return;
@@ -229,7 +283,7 @@ export function useChat() {
 
         const allMessages = [...messages, newUserMsg];
         await streamAssistantResponse(buildApiMessages(allMessages));
-    }, [inputValue, attachedImages, isStreaming, isFirstMessage, messages, buildApiMessages, streamAssistantResponse]);
+    }, [inputValue, attachedImages, isStreaming, isFirstMessage, messages, buildApiMessages, streamAssistantResponse, handleCompact]);
 
     const handleRefreshLastResponse = useCallback(async () => {
         if (isStreaming) return;
@@ -294,6 +348,7 @@ export function useChat() {
         setInputValue("");
         setAttachedImages([]);
         setAttachmentError("");
+        setCompactMemory(null);
     };
 
     return {
@@ -308,6 +363,7 @@ export function useChat() {
         choosenModelRef,
         messagesEndRef,
         textareaRef,
+        compactMemory,
         handleProfileChange,
         handleInput,
         handleAddImageFiles,
@@ -317,5 +373,6 @@ export function useChat() {
         handleEditLastUserMessage,
         handleKeyDown,
         handleNewChat,
+        handleCompact,
     };
 }
