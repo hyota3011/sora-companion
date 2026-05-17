@@ -26,6 +26,20 @@ Keys are stored per-provider in `chrome.storage.local` via `src/api/keys.js` (ke
 
 Images are read as data URLs (`FileReader`), validated by loading into an `Image` element, then stored as `{ id, name, mimeType, dataUrl, size }`. `src/api/imageMessages.js` converts this to provider format before each API call: `image_url` objects for OpenAI/Grok, `base64` source blocks for Claude.
 
+### `/compact` Command
+
+Typing `/compact` and pressing Enter (or clicking Send) triggers conversation compaction:
+
+1. `handleSend()` in `useChat.js` intercepts the literal string `/compact` before normal send logic.
+2. `handleCompact()` streams a LLM-generated summary of the full `messages[]` history (no context-window slicing — everything is sent).
+3. On success: `compactMemory` state is set to the summary text, `messages[]` is cleared, and `isFirstMessage` stays `false` so the chat view remains visible.
+4. On subsequent sends: `buildApiMessages()` prepends `{ role: "system", content: "Previous conversation summary:\n..." }` to every API request.
+5. `handleNewChat()` clears `compactMemory`.
+
+**Provider note:** OpenAI and Grok accept `role: "system"` natively in the messages array. Claude does not — `src/api/claude.js` filters out system-role messages and passes them as the top-level `system` field instead.
+
+**UI:** `MessageList` renders a memoized `CompactBanner` component (reads `compactMemory` from context) when compact memory is active. It is memoized separately so streaming deltas don't cause it to re-render.
+
 ## Adding a New Provider
 
 1. Add the id constant to `provider` and a profile entry to `defaultProfiles` in `src/config/profiles.js`.

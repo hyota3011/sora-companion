@@ -72,10 +72,6 @@ export function useChat() {
         }
     }, []);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
-
     /**
      * Handles text input changes and manages the auto-resizing of the textarea.
      *

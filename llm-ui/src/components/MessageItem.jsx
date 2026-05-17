@@ -27,8 +27,6 @@ export function BotActionButtons({ message }) {
     } = useChatContext();
 
     const text = message.text;
-    const isLiked = message.feedback === "like";
-    const isDisliked = message.feedback === "dislike";
 
     const handleCopy = () => {
         if (text) {
