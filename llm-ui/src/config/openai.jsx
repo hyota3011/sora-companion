@@ -4,8 +4,8 @@ export const openai = [
     {
         id: 'search',
         title: 'Search',
-        tag: 'GPT-5 Nano',
-        val: 'gpt-5-nano',
+        tag: 'GPT-5.4 Nano',
+        val: 'gpt-5.4-nano',
         desc: 'Quick answers with web-enhanced references',
         default: false,
         icon: <SearchIcon />
@@ -13,8 +13,8 @@ export const openai = [
     {
         id: 'smart',
         title: 'Smart',
-        tag: 'GPT-5 Mini',
-        val: 'gpt-5-mini',
+        tag: 'GPT-5.4 Mini',
+        val: 'gpt-5.4-mini',
         desc: 'Fast and capable for everyday tasks',
         default: true,
         icon: <ZapIcon />
@@ -22,8 +22,8 @@ export const openai = [
     {
         id: 'learn',
         title: 'Study',
-        tag: 'GPT-5.2',
-        val: 'gpt-5.2',
+        tag: 'GPT-5.5',
+        val: 'gpt-5.5',
         desc: 'Guided learning, quizzes, and explanations',
         default: false,
         icon: <GraduationCapIcon />
@@ -31,8 +31,8 @@ export const openai = [
     {
         id: 'deeper',
         title: 'Think Deeper',
-        tag: 'GPT-5.2 Pro',
-        val: 'gpt-5.2-pro',
+        tag: 'GPT-5.5 Pro',
+        val: 'gpt-5.5-pro',
         desc: 'Deep reasoning for complex problems',
         default: false,
         icon: <BrainIcon />

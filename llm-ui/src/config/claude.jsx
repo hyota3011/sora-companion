@@ -13,7 +13,7 @@ export const claude = [
     {
         id: 'claude-sonnet',
         title: 'Sonnet',
-        tag: 'Sonnet 4',
+        tag: 'Sonnet 4.6',
         val: 'claude-sonnet-4-6',
         desc: 'Balanced performance for everyday work',
         default: false,
@@ -22,7 +22,7 @@ export const claude = [
     {
         id: 'claude-opus',
         title: 'Opus',
-        tag: 'Opus 4',
+        tag: 'Opus 4.7',
         val: 'claude-opus-4-7',
         desc: 'Most intelligent — excels at complex reasoning',
         default: false,
