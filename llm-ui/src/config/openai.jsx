@@ -22,8 +22,8 @@ export const openai = [
     {
         id: 'learn',
         title: 'Study',
-        tag: 'GPT-5.5',
-        val: 'gpt-5.5',
+        tag: 'GPT-5.4',
+        val: 'gpt-5.4',
         desc: 'Guided learning, quizzes, and explanations',
         default: false,
         icon: <GraduationCapIcon />
@@ -31,8 +31,8 @@ export const openai = [
     {
         id: 'deeper',
         title: 'Think Deeper',
-        tag: 'GPT-5.5 Pro',
-        val: 'gpt-5.5-pro',
+        tag: 'GPT-5.5',
+        val: 'gpt-5.5',
         desc: 'Deep reasoning for complex problems',
         default: false,
         icon: <BrainIcon />
