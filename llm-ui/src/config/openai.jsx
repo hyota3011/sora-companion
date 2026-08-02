@@ -2,38 +2,29 @@ import { SearchIcon, ZapIcon, GraduationCapIcon, BrainIcon } from "../components
 
 export const openai = [
     {
-        id: 'search',
-        title: 'Search',
-        tag: 'GPT-5.4 Nano',
-        val: 'gpt-5.4-nano',
-        desc: 'Quick answers with web-enhanced references',
-        default: false,
-        icon: <SearchIcon />
-    },
-    {
-        id: 'smart',
-        title: 'Smart',
-        tag: 'GPT-5.4 Mini',
-        val: 'gpt-5.4-mini',
-        desc: 'Fast and capable for everyday tasks',
+        id: 'moon',
+        title: 'Moon',
+        tag: 'GPT-5.4 Luna',
+        val: 'gpt-5.6-luna',
+        desc: 'GPT-5.6 model optimized for cost-sensitive workloads',
         default: true,
         icon: <ZapIcon />
     },
     {
-        id: 'learn',
-        title: 'Study',
-        tag: 'GPT-5.4',
-        val: 'gpt-5.4',
-        desc: 'Guided learning, quizzes, and explanations',
+        id: 'earth',
+        title: 'Earth',
+        tag: 'GPT-5.6 Terra',
+        val: 'gpt-5.6-terra',
+        desc: 'GPT-5.6 model that balances intelligence and cost',
         default: false,
         icon: <GraduationCapIcon />
     },
     {
-        id: 'deeper',
-        title: 'Think Deeper',
-        tag: 'GPT-5.5',
-        val: 'gpt-5.5',
-        desc: 'Deep reasoning for complex problems',
+        id: 'sun',
+        title: 'Sun',
+        tag: 'GPT-5.6 Sol',
+        val: 'gpt-5.6-sol',
+        desc: 'Frontier model for complex professional work',
         default: false,
         icon: <BrainIcon />
     }
