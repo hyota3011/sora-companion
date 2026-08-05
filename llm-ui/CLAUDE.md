@@ -20,11 +20,19 @@ All chat state lives in `src/hooks/useChat.js` and is distributed via React Cont
 
 ### API Key Storage
 
-Keys are stored per-provider in `chrome.storage.local` via `src/api/keys.js` (key name: `apiKey_<profileId>`). This requires a Chrome extension runtime — in a plain browser tab keys must come from env vars (`VITE_ANTHROPIC_KEY`, `VITE_XAI_KEY`, `VITE_OPENAI_KEY`). `@crxjs/vite-plugin` is installed but not yet wired into `vite.config.js`. `VITE_PROFILE=prod` hides the existing key from the prompt dialog in the header.
+Keys are stored per-provider in `chrome.storage.local` via `src/api/keys.js` (key name: `apiKey_<profileId>`). In a plain browser build keys must come from env vars (`VITE_ANTHROPIC_KEY`, `VITE_XAI_KEY`, `VITE_OPENAI_KEY`). The Manifest V3 build is configured through `@crxjs/vite-plugin` in `vite.config.js`. `VITE_PROFILE=prod` hides the existing key from the prompt dialog in the header.
 
 ### Image Attachments
 
 Images are read as data URLs (`FileReader`), validated by loading into an `Image` element, then stored as `{ id, name, mimeType, dataUrl, size }`. `src/api/imageMessages.js` converts this to provider format before each API call: `image_url` objects for OpenAI/Grok, `base64` source blocks for Claude.
+
+### Browser Tab Attachments
+
+`src/api/tabCapture.js` queries all Chrome windows and uses `chrome.scripting.executeScript()` to capture a selected page's rendered text. `useChat` stores selected tabs as `{ id, title, url, content }` in `attachedTabs`; on send, each tab is retained on the user message and `buildApiMessages()` appends its title, URL, and captured text to the provider-bound user content. The composer and message bubble intentionally render only tab-title chips. Tab capture requires the extension's `tabs`, `scripting`, and `<all_urls>` permissions; non-HTTP(S), discarded, restricted, or injection-failed tabs are unavailable.
+
+### Slash Commands
+
+Typing `/` opens a keyboard-accessible composer menu. `/tabs` opens the multi-select tab picker and `/compact` runs the existing conversation compaction flow. Arrow keys change the active command, Enter selects it, and Escape clears the command input.
 
 ### `/compact` Command
 

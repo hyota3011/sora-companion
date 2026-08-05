@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { streamChat } from "../api/index.js";
 import { getDefaultModel } from "../config/models.jsx";
 import { defaultProfiles, getActiveProfile } from "../config/profiles.js";
@@ -36,6 +36,14 @@ function findLastUserIndexBefore(messages, beforeIndex) {
         .lastIndexOf("user");
 }
 
+function withTabContext(text, tabs = []) {
+    if (!tabs.length) return text;
+    const pageContext = tabs.map((tab) => (
+        `Page title: ${tab.title}\nPage URL: ${tab.url}\nPage content:\n${tab.content}`
+    )).join("\n\n---\n\n");
+    return `${text}${text ? "\n\n" : ""}Attached browser tabs:\n${pageContext}`;
+}
+
 /**
  * Custom hook that manages the chat state and logic.
  * This includes message history, input handling, streaming state,
@@ -51,6 +59,7 @@ export function useChat() {
     const [streamingMessage, setStreamingMessage] = useState(null);
     const [activeProfile, setActiveProfile] = useState(getActiveProfile());
     const [attachedImages, setAttachedImages] = useState([]);
+    const [attachedTabs, setAttachedTabs] = useState([]);
     const [attachmentError, setAttachmentError] = useState("");
     const [compactMemory, setCompactMemory] = useState(null);
     const choosenModelRef = useRef(getDefaultModel());
@@ -82,8 +91,10 @@ export function useChat() {
         setInputValue(target.value);
 
         // Auto-resize
-        target.style.height = "auto";
-        target.style.height = Math.min(target.scrollHeight, 120) + "px";
+        if (target.style && Number.isFinite(target.scrollHeight)) {
+            target.style.height = "auto";
+            target.style.height = Math.min(target.scrollHeight, 120) + "px";
+        }
     }, []);
 
     const handleAddImageFiles = useCallback(async (fileList) => {
@@ -132,13 +143,25 @@ export function useChat() {
         setAttachmentError("");
     }, []);
 
+    const handleAddTabs = useCallback((tabs) => {
+        setAttachedTabs((previous) => {
+            const byId = new Map(previous.map((tab) => [tab.id, tab]));
+            tabs.forEach((tab) => byId.set(tab.id, tab));
+            return [...byId.values()];
+        });
+    }, []);
+
+    const handleRemoveTab = useCallback((tabId) => {
+        setAttachedTabs((previous) => previous.filter((tab) => tab.id !== tabId));
+    }, []);
+
     const buildApiMessages = useCallback((sourceMessages) => {
         const contextLimit = activeProfile?.contextMessageCount || 20;
         const contextWindow = sourceMessages.slice(-contextLimit);
 
         const mapped = contextWindow.map((msg) => ({
             role: msg.sender === "user" ? "user" : "assistant",
-            content: msg.text,
+            content: withTabContext(msg.text, msg.tabs),
             images: msg.images || [],
         }));
 
@@ -259,16 +282,18 @@ export function useChat() {
 
         const text = inputValue.trim();
         const images = attachedImages;
-        if ((!text && images.length === 0) || isStreaming) return;
+        const tabs = attachedTabs;
+        if ((!text && images.length === 0 && tabs.length === 0) || isStreaming) return;
 
         if (isFirstMessage) {
             setIsFirstMessage(false);
         }
 
-        const newUserMsg = { id: createId(), text, sender: "user", images };
+        const newUserMsg = { id: createId(), text, sender: "user", images, tabs };
         setMessages((prev) => [...prev, newUserMsg]);
         setInputValue("");
         setAttachedImages([]);
+        setAttachedTabs([]);
         setAttachmentError("");
 
         if (textareaRef.current) {
@@ -279,7 +304,7 @@ export function useChat() {
 
         const allMessages = [...messages, newUserMsg];
         await streamAssistantResponse(buildApiMessages(allMessages));
-    }, [inputValue, attachedImages, isStreaming, isFirstMessage, messages, buildApiMessages, streamAssistantResponse, handleCompact]);
+    }, [inputValue, attachedImages, attachedTabs, isStreaming, isFirstMessage, messages, buildApiMessages, streamAssistantResponse, handleCompact]);
 
     const handleRefreshLastResponse = useCallback(async () => {
         if (isStreaming) return;
@@ -309,6 +334,7 @@ export function useChat() {
         setMessages(messages.slice(0, lastUserIndex));
         setInputValue(lastUserMessage.text || "");
         setAttachedImages(lastUserMessage.images || []);
+        setAttachedTabs(lastUserMessage.tabs || []);
         setAttachmentError("");
 
         requestAnimationFrame(() => {
@@ -343,6 +369,7 @@ export function useChat() {
         setIsFirstMessage(true);
         setInputValue("");
         setAttachedImages([]);
+        setAttachedTabs([]);
         setAttachmentError("");
         setCompactMemory(null);
     };
@@ -351,6 +378,7 @@ export function useChat() {
         messages,
         inputValue,
         attachedImages,
+        attachedTabs,
         attachmentError,
         isFirstMessage,
         isStreaming,
@@ -364,6 +392,8 @@ export function useChat() {
         handleInput,
         handleAddImageFiles,
         handleRemoveImage,
+        handleAddTabs,
+        handleRemoveTab,
         handleSend,
         handleRefreshLastResponse,
         handleEditLastUserMessage,

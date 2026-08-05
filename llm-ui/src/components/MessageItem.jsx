@@ -73,6 +73,7 @@ const MessageItem = memo(function MessageItem({ message }) {
     const isBot = message.sender === 'assistant';
     const isStreaming = message.isStreaming;
     const hasImages = message.images?.length > 0;
+    const hasTabs = message.tabs?.length > 0;
 
     return (
         <div className={`message ${message.sender} ${isStreaming ? 'is-streaming' : ''}`}>
@@ -113,6 +114,11 @@ const MessageItem = memo(function MessageItem({ message }) {
                                 {message.images.map((image) => (
                                     <img key={image.id} src={image.dataUrl} alt={image.name} />
                                 ))}
+                            </div>
+                        )}
+                        {hasTabs && (
+                            <div className="message-tab-list" aria-label="Attached browser tabs">
+                                {message.tabs.map((tab) => <span className="message-tab-chip" key={tab.id} title={tab.url}>{tab.title}</span>)}
                             </div>
                         )}
                         {message.text && <div>{message.text}</div>}

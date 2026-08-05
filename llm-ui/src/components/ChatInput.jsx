@@ -9,6 +9,73 @@ import sendIconImg from "../../static/images/SendIcon.png";
 import imageMenuIcon from "../assets/image-icon.svg";
 import { getDefaultModel, getModels } from "../config/models";
 import { useChatContext } from "../context/ChatContext";
+import { captureBrowserTab, listBrowserTabs } from "../api/tabCapture";
+
+const COMMANDS = [
+    { id: "tabs", label: "/tabs", description: "Attach content from browser tabs" },
+    { id: "compact", label: "/compact", description: "Summarize this conversation" },
+];
+
+const TabPicker = memo(function TabPicker({ selectedTabs, onConfirm, onClose }) {
+    const [tabs, setTabs] = useState([]);
+    const [selectedIds, setSelectedIds] = useState(() => new Set(selectedTabs.map((tab) => tab.id)));
+    const [isLoading, setIsLoading] = useState(true);
+    const [isCapturing, setIsCapturing] = useState(false);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        listBrowserTabs()
+            .then(setTabs)
+            .catch(() => setError("Unable to list browser tabs. Open this app from Chrome's extension toolbar."))
+            .finally(() => setIsLoading(false));
+    }, []);
+
+    const toggleTab = (tab) => {
+        if (!tab.available || isCapturing) return;
+        setSelectedIds((current) => {
+            const next = new Set(current);
+            next.has(tab.id) ? next.delete(tab.id) : next.add(tab.id);
+            return next;
+        });
+    };
+
+    const confirm = async () => {
+        const selected = tabs.filter((tab) => selectedIds.has(tab.id));
+        setIsCapturing(true);
+        setError("");
+        const results = await Promise.allSettled(selected.map(captureBrowserTab));
+        const captured = results.filter((result) => result.status === "fulfilled").map((result) => result.value);
+        const failures = results.length - captured.length;
+        if (failures) setError(`${failures} selected tab${failures === 1 ? "" : "s"} could not be read.`);
+        onConfirm(captured);
+        if (!failures) onClose();
+        setIsCapturing(false);
+    };
+
+    return (
+        <div className="tab-modal-backdrop" role="presentation" onMouseDown={onClose}>
+            <section className="tab-modal" role="dialog" aria-modal="true" aria-labelledby="tab-picker-title" onMouseDown={(event) => event.stopPropagation()}>
+                <div className="tab-modal-header">
+                    <div><h2 id="tab-picker-title">Attach browser tabs</h2><p>Selected pages are captured and sent with your next message.</p></div>
+                    <button className="icon-btn" onClick={onClose} aria-label="Close tab picker"><XIcon /></button>
+                </div>
+                <div className="tab-list" aria-live="polite">
+                    {isLoading && <div className="tab-picker-status">Loading tabs…</div>}
+                    {!isLoading && tabs.map((tab) => (
+                        <button key={tab.id} className={`tab-list-item ${selectedIds.has(tab.id) ? "selected" : ""} ${!tab.available ? "unavailable" : ""}`} onClick={() => toggleTab(tab)} disabled={!tab.available || isCapturing}>
+                            <span className="tab-checkbox" aria-hidden="true">{selectedIds.has(tab.id) ? "✓" : ""}</span>
+                            {tab.favIconUrl ? <img className="tab-favicon" src={tab.favIconUrl} alt="" /> : <span className="tab-favicon-placeholder" />}
+                            <span className="tab-list-text"><strong>{tab.title}</strong><span>{tab.available ? tab.url : tab.unavailableReason}</span></span>
+                        </button>
+                    ))}
+                    {!isLoading && tabs.length === 0 && <div className="tab-picker-status">No browser tabs are available.</div>}
+                </div>
+                {error && <div className="tab-picker-error">{error}</div>}
+                <div className="tab-modal-actions"><button className="outline-btn tab-cancel-btn" onClick={onClose} disabled={isCapturing}>Cancel</button><button className="tab-confirm-btn" onClick={confirm} disabled={isCapturing}>{isCapturing ? "Capturing…" : `Attach ${selectedIds.size || ""} tab${selectedIds.size === 1 ? "" : "s"}`}</button></div>
+            </section>
+        </div>
+    );
+});
 
 // 1. Isolate the dropdown state to prevent re-rendering the whole input area
 /**
@@ -147,15 +214,21 @@ const AttachmentMenu = memo(() => {
  */
 const ChatInput = memo(() => {
     const [isDraggingImage, setIsDraggingImage] = useState(false);
+    const [isTabPickerOpen, setIsTabPickerOpen] = useState(false);
+    const [commandIndex, setCommandIndex] = useState(0);
     const {
         inputValue,
         attachedImages,
+        attachedTabs,
         attachmentError,
         handleInput,
         handleKeyDown,
         handleSend,
+        handleCompact,
         handleAddImageFiles,
         handleRemoveImage,
+        handleAddTabs,
+        handleRemoveTab,
         isStreaming,
         textareaRef,
         activeProfile
@@ -163,6 +236,38 @@ const ChatInput = memo(() => {
 
     const providerName = activeProfile?.name;
     const dragDepthRef = useRef(0);
+    const showCommandMenu = /^\/\w*$/.test(inputValue);
+
+    const selectCommand = (command) => {
+        if (command.id === "tabs") {
+            handleInput({ target: { value: "", style: textareaRef.current?.style || {} } });
+            setIsTabPickerOpen(true);
+            return;
+        }
+        handleInput({ target: { value: "", style: textareaRef.current?.style || {} } });
+        handleCompact();
+    };
+
+    const handleComposerKeyDown = (event) => {
+        if (showCommandMenu) {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                event.preventDefault();
+                setCommandIndex((current) => (current + (event.key === "ArrowDown" ? 1 : COMMANDS.length - 1)) % COMMANDS.length);
+                return;
+            }
+            if (event.key === "Escape") {
+                event.preventDefault();
+                handleInput({ target: { value: "", style: textareaRef.current?.style || {} } });
+                return;
+            }
+            if (event.key === "Enter") {
+                event.preventDefault();
+                selectCommand(COMMANDS[commandIndex]);
+                return;
+            }
+        }
+        handleKeyDown(event);
+    };
 
     const hasImageFiles = (dataTransfer) => {
         return Array.from(dataTransfer?.items || []).some((item) => (
@@ -261,6 +366,16 @@ const ChatInput = memo(() => {
                         {attachmentError && <div className="attachment-error">{attachmentError}</div>}
                     </div>
                 )}
+                {attachedTabs.length > 0 && (
+                    <div className="tab-attachment-list" aria-label="Attached browser tabs">
+                        {attachedTabs.map((tab) => (
+                            <span className="tab-attachment-chip" key={tab.id} title={tab.url}>
+                                <span>{tab.title}</span>
+                                <button onClick={() => handleRemoveTab(tab.id)} disabled={isStreaming} aria-label={`Remove ${tab.title}`}><XIcon width={12} height={12} /></button>
+                            </span>
+                        ))}
+                    </div>
+                )}
                 <textarea
                     ref={textareaRef}
                     id="chat-input"
@@ -268,10 +383,19 @@ const ChatInput = memo(() => {
                     rows="1"
                     value={inputValue}
                     onChange={handleInput}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={handleComposerKeyDown}
                     onPaste={handlePaste}
                     disabled={isStreaming}
                 ></textarea>
+                {showCommandMenu && (
+                    <div className="command-menu" role="listbox" aria-label="Slash commands">
+                        {COMMANDS.map((command, index) => (
+                            <button key={command.id} className={`command-item ${index === commandIndex ? "active" : ""}`} onMouseDown={(event) => event.preventDefault()} onClick={() => selectCommand(command)} role="option" aria-selected={index === commandIndex}>
+                                <strong>{command.label}</strong><span>{command.description}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 <div className="input-toolbar">
                     <div className="toolbar-left">
@@ -297,6 +421,7 @@ const ChatInput = memo(() => {
                     </div>
                 </div>
             </div>
+            {isTabPickerOpen && <TabPicker selectedTabs={attachedTabs} onConfirm={handleAddTabs} onClose={() => setIsTabPickerOpen(false)} />}
         </footer>
     );
 });

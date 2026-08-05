@@ -20,3 +20,7 @@ npm run preview    # preview the production build locally
 ```
 
 There are no tests configured in this project.
+
+## Browser Tab Context
+
+The app is packaged as a Manifest V3 Chrome toolbar-popup extension. It uses `tabs` and `scripting` permissions plus `<all_urls>` host access. `/tabs` opens a multi-select picker across Chrome windows, captures a selected page's rendered text when confirmed, and attaches it to the next request. Restricted, discarded, and non-HTTP(S) pages are unavailable. See `llm-ui/CLAUDE.md` for the state and UI flow.
