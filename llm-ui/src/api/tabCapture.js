@@ -27,19 +27,68 @@ export async function listBrowserTabs() {
     }));
 }
 
-export async function captureBrowserTab(tab) {
-    if (!tab.available) {
-        throw new Error(tab.unavailableReason || "This tab cannot be attached.");
+export async function captureBrowserTab() {
+    if (!globalThis.chrome?.tabs?.query) {
+        return [];
     }
 
-    try {
-        const results = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: extractRenderedText,
-        });
-        const content = results?.[0]?.result || "";
-        return { id: tab.id, title: tab.title, url: tab.url, content };
-    } catch (error) {
-        throw new Error(error?.message || "Chrome could not read this page.");
+    const tabs = await chrome.tabs.query({});
+
+    return tabs.map((tab) => {
+        const availability = getTabAvailability(tab);
+
+        return {
+            id: tab.id,
+            windowId: tab.windowId,
+            title: tab.title || "Untitled tab",
+            url: tab.url || "",
+            favIconUrl: tab.favIconUrl || "",
+            available: availability.available,
+            unavailableReason: availability.reason,
+        };
+    });
+}
+
+function getTabAvailability(tab) {
+    if (!tab?.id) {
+        return {
+            available: false,
+            reason: "Invalid browser tab."
+        };
     }
+
+    if (tab.discarded) {
+        return {
+            available: false,
+            reason: "This tab is discarded and must be opened first."
+        };
+    }
+
+    const url = tab.url || "";
+
+    if (url.startsWith("chrome://")) {
+        return {
+            available: false,
+            reason: "Chrome internal pages cannot be read by extensions."
+        };
+    }
+
+    if (url.startsWith("chrome-extension://")) {
+        return {
+            available: false,
+            reason: "Extension pages cannot be captured."
+        };
+    }
+
+    if (!/^https?:\/\//.test(url)) {
+        return {
+            available: false,
+            reason: "This page type is not supported."
+        };
+    }
+
+    return {
+        available: true,
+        reason: ""
+    };
 }

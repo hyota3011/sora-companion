@@ -5,7 +5,9 @@
   "description": "A premium AI companion in your browser. Experience seamless chat streaming and intelligent assistance directly through your Chrome side panel.",
   "permissions": [
     "sidePanel",
-    "storage"
+    "storage",
+    "tabs",
+    "scripting"
   ],
   "background": {
     "service_worker": "background.js"
@@ -21,5 +23,9 @@
   },
   "side_panel": {
     "default_path": "llm-ui/dist/index.html"
-  }
+  },
+    "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ]
 }
