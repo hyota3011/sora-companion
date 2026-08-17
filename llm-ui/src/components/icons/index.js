@@ -16,4 +16,5 @@ export * from './SendIcon';
 export * from './MicIcon';
 export * from './ImageIcon';
 export * from './PictureIcon';
+export * from './HistoryIcon';
 

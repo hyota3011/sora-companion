@@ -3,6 +3,7 @@ import Header from "./components/Header";
 import InitialView from "./components/InitialView";
 import MessageList from "./components/MessageList";
 import ChatInput from "./components/ChatInput";
+import HistorySidebar from "./components/HistorySidebar";
 import { defaultProfiles } from "./config/profiles";
 
 /**
@@ -37,6 +38,7 @@ function ChatContent() {
             </main>
 
             <ChatInput />
+            <HistorySidebar />
         </div>
     );
-}
+}

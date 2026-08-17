@@ -1,7 +1,8 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { streamChat } from "../api/index.js";
 import { getDefaultModel } from "../config/models.jsx";
 import { defaultProfiles, getActiveProfile } from "../config/profiles.js";
+import { deleteExpiredChats, getChat, getRetentionDays, listChats, RETENTION_OPTIONS, saveChat, saveRetentionDays } from "../storage/chatHistory.js";
 
 function createId() {
     return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -30,27 +31,40 @@ function findLastAssistantIndex(messages) {
 }
 
 function findLastUserIndexBefore(messages, beforeIndex) {
-    return messages
-        .slice(0, beforeIndex)
-        .map((msg) => msg.sender)
-        .lastIndexOf("user");
+    return messages.slice(0, beforeIndex).map((msg) => msg.sender).lastIndexOf("user");
 }
 
 function withTabContext(text, tabs = []) {
     if (!tabs.length) return text;
-    const pageContext = tabs.map((tab) => (
-        `Page title: ${tab.title}\nPage URL: ${tab.url}\nPage content:\n${tab.content}`
-    )).join("\n\n---\n\n");
+    const pageContext = tabs.map((tab) => `Page title: ${tab.title}\nPage URL: ${tab.url}\nPage content:\n${tab.content}`).join("\n\n---\n\n");
     return `${text}${text ? "\n\n" : ""}Attached browser tabs:\n${pageContext}`;
 }
 
-/**
- * Custom hook that manages the chat state and logic.
- * This includes message history, input handling, streaming state,
- * profile/model selection, image attachments, and automatic scrolling.
- *
- * @returns {Object} An object containing chat state and handler functions.
- */
+function fallbackTitle(createdAt) {
+    return `Chat · ${new Date(createdAt).toLocaleString()}`;
+}
+
+function getChatTitle(messages, previousTitle, createdAt) {
+    const latestUserMessage = [...messages].reverse().find((message) => message.sender === "user");
+    if (!latestUserMessage) return previousTitle || fallbackTitle(createdAt);
+    const text = (latestUserMessage.text || "").replace(/\s+/g, " ").trim();
+    if (!text) return fallbackTitle(createdAt);
+    return text.length > 60 ? `${text.slice(0, 59).trimEnd()}…` : text;
+}
+
+/** Images are deliberately excluded from durable history. */
+function serializeMessages(messages) {
+    return messages.map(({ id, text, sender, isError, feedback, tabs }) => ({
+        id,
+        text: text || "",
+        sender,
+        ...(isError ? { isError: true } : {}),
+        ...(feedback !== undefined ? { feedback } : {}),
+        ...(tabs?.length ? { tabs } : {}),
+    }));
+}
+
+/** Manages the active chat and its IndexedDB-backed history. */
 export function useChat() {
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState("");
@@ -62,84 +76,122 @@ export function useChat() {
     const [attachedTabs, setAttachedTabs] = useState([]);
     const [attachmentError, setAttachmentError] = useState("");
     const [compactMemory, setCompactMemory] = useState(null);
-    const choosenModelRef = useRef(getDefaultModel());
+    const [activeChatId, setActiveChatId] = useState(null);
+    const [history, setHistory] = useState([]);
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+    const [historyError, setHistoryError] = useState("");
+    const [retentionDays, setRetentionDays] = useState(30);
 
+    const choosenModelRef = useRef(getDefaultModel());
     const messagesEndRef = useRef(null);
     const textareaRef = useRef(null);
+    const chatMetaRef = useRef(null);
 
-    /**
-     * Updates the active provider profile and resets the chosen model to the default for that provider.
-     *
-     * @param {string} profileId - The ID of the profile to switch to.
-     */
-    const handleProfileChange = useCallback((profileId) => {
-        const newProfile = defaultProfiles.find((p) => p.id === profileId);
-        if (newProfile) {
-            setActiveProfile(newProfile);
-            localStorage.setItem("activeProfileId", profileId);
-            choosenModelRef.current = getDefaultModel();
+    const refreshHistory = useCallback(async (shouldClean = true, configuredRetention = retentionDays) => {
+        setIsHistoryLoading(true);
+        setHistoryError("");
+        try {
+            if (shouldClean) await deleteExpiredChats(configuredRetention);
+            setHistory(await listChats());
+        } catch (error) {
+            console.error("Chat history error:", error);
+            setHistoryError("Saved chat history is unavailable right now.");
+        } finally {
+            setIsHistoryLoading(false);
         }
+    }, [retentionDays]);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function initialiseHistory() {
+            try {
+                const savedRetention = await getRetentionDays();
+                if (cancelled) return;
+                setRetentionDays(savedRetention);
+                await deleteExpiredChats(savedRetention);
+                const chats = await listChats();
+                if (!cancelled) setHistory(chats);
+            } catch (error) {
+                console.error("Chat history initialization failed:", error);
+                if (!cancelled) setHistoryError("Saved chat history is unavailable right now.");
+            }
+        }
+        void initialiseHistory();
+        return () => { cancelled = true; };
     }, []);
 
-    /**
-     * Handles text input changes and manages the auto-resizing of the textarea.
-     *
-     * @param {React.ChangeEvent<HTMLTextAreaElement>} e - The input event.
-     */
-    const handleInput = useCallback((e) => {
-        const target = e.target;
-        setInputValue(target.value);
+    const persistCurrentChat = useCallback(async () => {
+        if (!activeChatId || (!messages.length && !compactMemory)) return;
+        const meta = chatMetaRef.current || { createdAt: Date.now(), title: "" };
+        const title = getChatTitle(messages, meta.title, meta.createdAt);
+        const record = {
+            id: activeChatId,
+            title,
+            messages: serializeMessages(messages),
+            compactMemory: compactMemory || null,
+            createdAt: meta.createdAt,
+            updatedAt: Date.now(),
+        };
+        try {
+            await saveChat(record);
+            chatMetaRef.current = { createdAt: record.createdAt, title };
+            setHistory((current) => [record, ...current.filter((chat) => chat.id !== record.id)]);
+            setHistoryError("");
+        } catch (error) {
+            console.error("Unable to save chat history:", error);
+            setHistoryError("This chat could not be saved.");
+        }
+    }, [activeChatId, compactMemory, messages]);
 
-        // Auto-resize
+    useEffect(() => {
+        if (!activeChatId || (!messages.length && !compactMemory)) return undefined;
+        const timer = window.setTimeout(() => { void persistCurrentChat(); }, 250);
+        return () => window.clearTimeout(timer);
+    }, [activeChatId, compactMemory, messages, persistCurrentChat]);
+
+    const handleProfileChange = useCallback((profileId) => {
+        const newProfile = defaultProfiles.find((profile) => profile.id === profileId);
+        if (!newProfile) return;
+        setActiveProfile(newProfile);
+        localStorage.setItem("activeProfileId", profileId);
+        choosenModelRef.current = getDefaultModel();
+    }, []);
+
+    const handleInput = useCallback((event) => {
+        const target = event.target;
+        setInputValue(target.value);
         if (target.style && Number.isFinite(target.scrollHeight)) {
             target.style.height = "auto";
-            target.style.height = Math.min(target.scrollHeight, 120) + "px";
+            target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
         }
     }, []);
 
     const handleAddImageFiles = useCallback(async (fileList) => {
         const files = Array.from(fileList || []);
         if (!files.length) return;
-
         const validImages = [];
         const invalidFiles = [];
-
         for (const file of files) {
             if (!file.type?.startsWith("image/")) {
                 invalidFiles.push(file.name);
                 continue;
             }
-
             try {
                 const dataUrl = await readFileAsDataUrl(file);
                 await validateImageData(dataUrl);
-
-                validImages.push({
-                    id: createId(),
-                    name: file.name,
-                    mimeType: file.type,
-                    dataUrl,
-                    size: file.size,
-                });
+                validImages.push({ id: createId(), name: file.name, mimeType: file.type, dataUrl, size: file.size });
             } catch (error) {
                 console.error("Image validation failed:", error);
                 invalidFiles.push(file.name);
             }
         }
-
-        if (validImages.length) {
-            setAttachedImages((prev) => [...prev, ...validImages]);
-        }
-
-        setAttachmentError(
-            invalidFiles.length
-                ? `${invalidFiles.length} file${invalidFiles.length === 1 ? "" : "s"} skipped because they were not valid images.`
-                : ""
-        );
+        if (validImages.length) setAttachedImages((previous) => [...previous, ...validImages]);
+        setAttachmentError(invalidFiles.length ? `${invalidFiles.length} file${invalidFiles.length === 1 ? "" : "s"} skipped because they were not valid images.` : "");
     }, []);
 
     const handleRemoveImage = useCallback((imageId) => {
-        setAttachedImages((prev) => prev.filter((image) => image.id !== imageId));
+        setAttachedImages((previous) => previous.filter((image) => image.id !== imageId));
         setAttachmentError("");
     }, []);
 
@@ -157,70 +209,28 @@ export function useChat() {
 
     const buildApiMessages = useCallback((sourceMessages) => {
         const contextLimit = activeProfile?.contextMessageCount || 20;
-        const contextWindow = sourceMessages.slice(-contextLimit);
-
-        const mapped = contextWindow.map((msg) => ({
-            role: msg.sender === "user" ? "user" : "assistant",
-            content: withTabContext(msg.text, msg.tabs),
-            images: msg.images || [],
+        const mapped = sourceMessages.slice(-contextLimit).map((message) => ({
+            role: message.sender === "user" ? "user" : "assistant",
+            content: withTabContext(message.text, message.tabs),
+            images: message.images || [],
         }));
-
-        if (compactMemory) {
-            return [{ role: "system", content: `Previous conversation summary:\n${compactMemory}`, images: [] }, ...mapped];
-        }
-        return mapped;
+        return compactMemory ? [{ role: "system", content: `Previous conversation summary:\n${compactMemory}`, images: [] }, ...mapped] : mapped;
     }, [activeProfile, compactMemory]);
 
     const streamAssistantResponse = useCallback(async (apiMessages) => {
-        setStreamingMessage({
-            text: "...thinking",
-            sender: "assistant",
-            isStreaming: true,
-        });
-
+        setStreamingMessage({ text: "...thinking", sender: "assistant", isStreaming: true });
         try {
             let accumulated = "";
-
-            for await (const delta of streamChat(
-                apiMessages,
-                choosenModelRef.current.val,
-                activeProfile
-            )) {
+            for await (const delta of streamChat(apiMessages, choosenModelRef.current.val, activeProfile)) {
                 accumulated += delta;
-                setStreamingMessage({
-                    text: accumulated,
-                    sender: "assistant",
-                    isStreaming: true,
-                });
+                setStreamingMessage({ text: accumulated, sender: "assistant", isStreaming: true });
             }
-
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: createId(),
-                    text: accumulated,
-                    sender: "assistant",
-                    isStreaming: false,
-                    feedback: null,
-                },
-            ]);
+            setMessages((previous) => [...previous, { id: createId(), text: accumulated, sender: "assistant", isStreaming: false, feedback: null }]);
             setStreamingMessage(null);
         } catch (error) {
             console.error("Streaming error:", error);
-            let displayError = error.message;
-            if (displayError === "Failed to fetch") {
-                displayError = "Invalid API Key or Network error";
-            }
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: createId(),
-                    text: displayError,
-                    sender: "assistant",
-                    isError: true,
-                    feedback: null,
-                },
-            ]);
+            const text = error.message === "Failed to fetch" ? "Invalid API Key or Network error" : error.message;
+            setMessages((previous) => [...previous, { id: createId(), text, sender: "assistant", isError: true, feedback: null }]);
             setStreamingMessage(null);
         } finally {
             setIsStreaming(false);
@@ -229,23 +239,12 @@ export function useChat() {
 
     const handleCompact = useCallback(async () => {
         if (isStreaming || messages.length === 0) return;
-
         setIsStreaming(true);
         setStreamingMessage({ text: "...thinking", sender: "assistant", isStreaming: true });
-
         const compactApiMessages = [
-            ...messages.map(msg => ({
-                role: msg.sender === "user" ? "user" : "assistant",
-                content: msg.text,
-                images: msg.images || [],
-            })),
-            {
-                role: "user",
-                content: "Please provide a concise summary of the above conversation. Focus on key decisions, facts, and context that would be needed to continue the conversation. Be brief and factual.",
-                images: [],
-            },
+            ...messages.map((message) => ({ role: message.sender === "user" ? "user" : "assistant", content: message.text, images: message.images || [] })),
+            { role: "user", content: "Please provide a concise summary of the above conversation. Focus on key decisions, facts, and context that would be needed to continue the conversation. Be brief and factual.", images: [] },
         ];
-
         try {
             let summary = "";
             for await (const delta of streamChat(compactApiMessages, choosenModelRef.current.val, activeProfile)) {
@@ -257,21 +256,14 @@ export function useChat() {
             setMessages([]);
         } catch (error) {
             console.error("Compact error:", error);
-            let displayError = error.message === "Failed to fetch" ? "Invalid API Key or Network error" : error.message;
-            setMessages(prev => [
-                ...prev,
-                { id: createId(), text: displayError, sender: "assistant", isError: true, feedback: null },
-            ]);
+            const text = error.message === "Failed to fetch" ? "Invalid API Key or Network error" : error.message;
+            setMessages((previous) => [...previous, { id: createId(), text, sender: "assistant", isError: true, feedback: null }]);
             setStreamingMessage(null);
         } finally {
             setIsStreaming(false);
         }
-    }, [isStreaming, messages, activeProfile]);
+    }, [activeProfile, isStreaming, messages]);
 
-    /**
-     * Sends the current input value as a message and initiates the streaming response from the AI.
-     * Handles context window management and error display.
-     */
     const handleSend = useCallback(async () => {
         if (inputValue.trim() === "/compact") {
             setInputValue("");
@@ -279,92 +271,66 @@ export function useChat() {
             await handleCompact();
             return;
         }
-
         const text = inputValue.trim();
         const images = attachedImages;
         const tabs = attachedTabs;
         if ((!text && images.length === 0 && tabs.length === 0) || isStreaming) return;
-
-        if (isFirstMessage) {
-            setIsFirstMessage(false);
+        if (!activeChatId) {
+            const createdAt = Date.now();
+            chatMetaRef.current = { createdAt, title: "" };
+            setActiveChatId(createId());
         }
-
-        const newUserMsg = { id: createId(), text, sender: "user", images, tabs };
-        setMessages((prev) => [...prev, newUserMsg]);
+        if (isFirstMessage) setIsFirstMessage(false);
+        const newUserMessage = { id: createId(), text, sender: "user", images, tabs };
+        setMessages((previous) => [...previous, newUserMessage]);
         setInputValue("");
         setAttachedImages([]);
         setAttachedTabs([]);
         setAttachmentError("");
-
-        if (textareaRef.current) {
-            textareaRef.current.style.height = "auto";
-        }
-
+        if (textareaRef.current) textareaRef.current.style.height = "auto";
         setIsStreaming(true);
-
-        const allMessages = [...messages, newUserMsg];
-        await streamAssistantResponse(buildApiMessages(allMessages));
-    }, [inputValue, attachedImages, attachedTabs, isStreaming, isFirstMessage, messages, buildApiMessages, streamAssistantResponse, handleCompact]);
+        await streamAssistantResponse(buildApiMessages([...messages, newUserMessage]));
+    }, [activeChatId, attachedImages, attachedTabs, buildApiMessages, handleCompact, inputValue, isFirstMessage, isStreaming, messages, streamAssistantResponse]);
 
     const handleRefreshLastResponse = useCallback(async () => {
         if (isStreaming) return;
-
         const lastAssistantIndex = findLastAssistantIndex(messages);
-        if (lastAssistantIndex === -1) return;
-
         const lastUserIndex = findLastUserIndexBefore(messages, lastAssistantIndex);
-        if (lastUserIndex === -1) return;
-
+        if (lastAssistantIndex === -1 || lastUserIndex === -1) return;
         const sourceMessages = messages.slice(0, lastAssistantIndex);
         setMessages(sourceMessages);
         setIsStreaming(true);
         await streamAssistantResponse(buildApiMessages(sourceMessages));
-    }, [isStreaming, messages, buildApiMessages, streamAssistantResponse]);
+    }, [buildApiMessages, isStreaming, messages, streamAssistantResponse]);
 
     const handleEditLastUserMessage = useCallback(() => {
         if (isStreaming) return;
-
         const lastAssistantIndex = findLastAssistantIndex(messages);
-        if (lastAssistantIndex === -1) return;
-
         const lastUserIndex = findLastUserIndexBefore(messages, lastAssistantIndex);
-        if (lastUserIndex === -1) return;
-
+        if (lastAssistantIndex === -1 || lastUserIndex === -1) return;
         const lastUserMessage = messages[lastUserIndex];
         setMessages(messages.slice(0, lastUserIndex));
         setInputValue(lastUserMessage.text || "");
         setAttachedImages(lastUserMessage.images || []);
         setAttachedTabs(lastUserMessage.tabs || []);
         setAttachmentError("");
-
         requestAnimationFrame(() => {
-            if (textareaRef.current) {
-                textareaRef.current.focus();
-                textareaRef.current.style.height = "auto";
-                textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + "px";
-            }
+            if (!textareaRef.current) return;
+            textareaRef.current.focus();
+            textareaRef.current.style.height = "auto";
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
         });
     }, [isStreaming, messages]);
 
-    /**
-     * Handles keydown events in the textarea, specifically "Enter" for sending messages.
-     *
-     * @param {React.KeyboardEvent<HTMLTextAreaElement>} e - The keyboard event.
-     */
-    const handleKeyDown = useCallback(
-        (e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-            }
-        },
-        [handleSend]
-    );
+    const handleKeyDown = useCallback((event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            void handleSend();
+        }
+    }, [handleSend]);
 
-    /**
-     * Resets the chat state to start a new conversation.
-     */
-    const handleNewChat = () => {
+    const handleNewChat = useCallback(() => {
+        void persistCurrentChat();
         setMessages([]);
         setIsFirstMessage(true);
         setInputValue("");
@@ -372,33 +338,75 @@ export function useChat() {
         setAttachedTabs([]);
         setAttachmentError("");
         setCompactMemory(null);
-    };
+        setActiveChatId(null);
+        chatMetaRef.current = null;
+    }, [persistCurrentChat]);
+
+    const handleOpenHistory = useCallback(() => {
+        setIsHistoryOpen(true);
+        void refreshHistory();
+    }, [refreshHistory]);
+
+    const handleCloseHistory = useCallback(() => setIsHistoryOpen(false), []);
+
+    const handleLoadHistory = useCallback(async (chatId) => {
+        if (isStreaming) return;
+        await persistCurrentChat();
+        setIsHistoryLoading(true);
+        setHistoryError("");
+        try {
+            const chat = await getChat(chatId);
+            if (!chat) {
+                await refreshHistory();
+                return;
+            }
+            const resumedChat = { ...chat, updatedAt: Date.now() };
+            await saveChat(resumedChat);
+            chatMetaRef.current = { createdAt: chat.createdAt, title: chat.title };
+            setActiveChatId(chat.id);
+            setMessages(Array.isArray(chat.messages) ? chat.messages : []);
+            setCompactMemory(chat.compactMemory || null);
+            setInputValue("");
+            setAttachedImages([]);
+            setAttachedTabs([]);
+            setAttachmentError("");
+            setIsFirstMessage(!(chat.messages?.length || chat.compactMemory));
+            setHistory((current) => [resumedChat, ...current.filter((entry) => entry.id !== chat.id)]);
+            setIsHistoryOpen(false);
+        } catch (error) {
+            console.error("Unable to restore chat history:", error);
+            setHistoryError("This saved chat could not be opened.");
+        } finally {
+            setIsHistoryLoading(false);
+        }
+    }, [isStreaming, persistCurrentChat, refreshHistory]);
+
+    const handleRetentionChange = useCallback(async (value) => {
+        const nextRetention = value === "never" ? null : Number(value);
+        if (!RETENTION_OPTIONS.some((option) => option.value === nextRetention)) return;
+        setIsHistoryLoading(true);
+        setHistoryError("");
+        try {
+            await persistCurrentChat();
+            await saveRetentionDays(nextRetention);
+            setRetentionDays(nextRetention);
+            await deleteExpiredChats(nextRetention);
+            setHistory(await listChats());
+        } catch (error) {
+            console.error("Unable to update history retention:", error);
+            setHistoryError("History retention could not be updated.");
+        } finally {
+            setIsHistoryLoading(false);
+        }
+    }, [persistCurrentChat]);
 
     return {
-        messages,
-        inputValue,
-        attachedImages,
-        attachedTabs,
-        attachmentError,
-        isFirstMessage,
-        isStreaming,
-        streamingMessage,
-        activeProfile,
-        choosenModelRef,
-        messagesEndRef,
-        textareaRef,
-        compactMemory,
-        handleProfileChange,
-        handleInput,
-        handleAddImageFiles,
-        handleRemoveImage,
-        handleAddTabs,
-        handleRemoveTab,
-        handleSend,
-        handleRefreshLastResponse,
-        handleEditLastUserMessage,
-        handleKeyDown,
-        handleNewChat,
-        handleCompact,
+        messages, inputValue, attachedImages, attachedTabs, attachmentError, isFirstMessage, isStreaming,
+        streamingMessage, activeProfile, choosenModelRef, messagesEndRef, textareaRef, compactMemory,
+        activeChatId, history, isHistoryOpen, isHistoryLoading, historyError, retentionDays,
+        handleProfileChange, handleInput, handleAddImageFiles, handleRemoveImage, handleAddTabs,
+        handleRemoveTab, handleSend, handleRefreshLastResponse, handleEditLastUserMessage, handleKeyDown,
+        handleNewChat, handleCompact, handleOpenHistory, handleCloseHistory, handleLoadHistory,
+        handleRetentionChange,
     };
 }

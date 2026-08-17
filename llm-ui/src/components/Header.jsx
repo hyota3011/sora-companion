@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { EditIcon, ChevronDownIcon, MoreHorizontalIcon, XIcon } from "./icons";
+import { EditIcon, ChevronDownIcon, HistoryIcon, MoreHorizontalIcon, XIcon } from "./icons";
 import keyIcon from "../../static/images/KeyIcon.png";
 import { saveApiKey } from "../api/keys";
 import { _getApiKey } from "../config/profiles";
@@ -74,7 +74,24 @@ function ProfileSelector({ profiles }) {
  * @param {Array} props.profiles - List of available provider profiles.
  */
 export default function Header({ profiles }) {
-    const { activeProfile, handleNewChat } = useChatContext();
+    const { activeProfile, handleNewChat, handleOpenHistory } = useChatContext();
+    const [isMoreOpen, setIsMoreOpen] = useState(false);
+    const moreMenuRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) setIsMoreOpen(false);
+        };
+        const handleKeyDown = (event) => {
+            if (event.key === "Escape") setIsMoreOpen(false);
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("keydown", handleKeyDown);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, []);
 
     const handleSetKey = async () => {
         if (!activeProfile) return;
@@ -103,9 +120,19 @@ export default function Header({ profiles }) {
                 )}
             </div>
             <div className="header-right">
-                <button className="icon-btn">
-                    <MoreHorizontalIcon />
-                </button>
+                <div className="header-more-menu" ref={moreMenuRef}>
+                    <button className="icon-btn" title="More options" aria-label="More options" aria-expanded={isMoreOpen} onClick={() => setIsMoreOpen((open) => !open)}>
+                        <MoreHorizontalIcon />
+                    </button>
+                    {isMoreOpen && (
+                        <div className="dropdown-menu header-dropdown-menu" role="menu">
+                            <button className="dropdown-item" role="menuitem" onClick={() => { setIsMoreOpen(false); handleOpenHistory(); }}>
+                                <div className="dropdown-item-icon"><HistoryIcon /></div>
+                                <div className="dropdown-item-content"><span className="dropdown-item-title">History</span></div>
+                            </button>
+                        </div>
+                    )}
+                </div>
                 <button className="icon-btn" onClick={() => window.close()} title="Close">
                     <XIcon />
                 </button>
