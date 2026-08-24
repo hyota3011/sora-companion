@@ -38,7 +38,10 @@ body {
 }
 
 .header-more-menu { position: relative; }
-.header-dropdown-menu { top: calc(100% + 8px); right: 0; bottom: auto; left: auto; width: 190px; }
+.dropdown-menu.header-dropdown-menu { top: calc(100% + 8px); right: 0; bottom: auto; left: auto; width: 144px; }
+.header-dropdown-menu .dropdown-item { color: #1a1a1a; }
+.header-dropdown-menu .dropdown-item-icon,
+.header-dropdown-menu .dropdown-item-title { color: inherit; }
 
 .drop-icon {
     margin-left: -4px;

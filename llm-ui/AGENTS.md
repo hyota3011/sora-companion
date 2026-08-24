@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex when working with code in this repository.
 
 ## Architecture
 
@@ -52,6 +52,6 @@ Typing `/compact` and pressing Enter (or clicking Send) triggers conversation co
 
 1. Add the id constant to `provider` and a profile entry to `defaultProfiles` in `src/config/profiles.js`.
 2. Create `src/config/<provider>.jsx` exporting a model array.
-3. Create `src/api/<provider>.js` — see `src/api/CLAUDE.md` for the required contract.
+3. Create `src/api/<provider>.js` — see `src/api/AGENTS.md` for the required contract.
 4. Add a `case` in `src/api/index.js` to route to the new implementation.
 5. Add a `case` in `src/config/models.jsx` to return the new model list.

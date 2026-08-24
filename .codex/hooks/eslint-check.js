@@ -15,7 +15,7 @@ function logError(msg) {
   console.error(`[ESLint Hook Error] ${msg}`);
 }
 
-// Check if we have stdin input (Claude Code hooks receive tool details via stdin)
+// Check if we have stdin input (Codex hooks receive tool details via stdin)
 let stdinData = '';
 try {
   stdinData = fs.readFileSync(0, 'utf-8');
@@ -49,7 +49,7 @@ function runESLintOnFile(filePath) {
     log(`ESLint passed!`);
   } catch (error) {
     // execSync will throw if ESLint exits with a non-zero code.
-    // We exit with 1 to indicate the hook failed (and alert Claude Code of lint issues).
+    // We exit with 1 to indicate the hook failed (and alert Codex of lint issues).
     process.exit(1);
   }
 }
