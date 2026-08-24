@@ -6,7 +6,7 @@ This file provides guidance to Codex when working with code in this repository.
 
 ### State Management
 
-All chat state lives in `src/hooks/useChat.js` and is distributed via React Context (`src/context/ChatContext.jsx`). Components consume state through `useChatContext()` — never pass chat state as props. `choosenModelRef` is a `useRef` (not state) so model switches don't trigger re-renders.
+All chat and global-preference state lives in `src/hooks/useChat.js` and is distributed via React Context (`src/context/ChatContext.jsx`). Components consume state through `useChatContext()` — never pass chat state as props. `choosenModelRef` is a `useRef` (not state) so model switches don't trigger re-renders.
 
 ### Provider / Profile System
 
@@ -41,12 +41,16 @@ Typing `/compact` and pressing Enter (or clicking Send) triggers conversation co
 1. `handleSend()` in `useChat.js` intercepts the literal string `/compact` before normal send logic.
 2. `handleCompact()` streams a LLM-generated summary of the full `messages[]` history (no context-window slicing — everything is sent).
 3. On success: `compactMemory` state is set to the summary text, `messages[]` is cleared, and `isFirstMessage` stays `false` so the chat view remains visible.
-4. On subsequent sends: `buildApiMessages()` prepends `{ role: "system", content: "Previous conversation summary:\n..." }` to every API request.
+4. On subsequent sends: `buildApiMessages()` includes compact memory in a provider-neutral system message, combined with the global user preference when one is saved.
 5. `handleNewChat()` clears `compactMemory`.
 
 **Provider note:** OpenAI and Grok accept `role: "system"` natively in the messages array. Claude does not — `src/api/claude.js` filters out system-role messages and passes them as the top-level `system` field instead.
 
 **UI:** `MessageList` renders a memoized `CompactBanner` component (reads `compactMemory` from context) when compact memory is active. It is memoized separately so streaming deltas don't cause it to re-render.
+
+### User Preferences
+
+The More menu in `Header` opens `PreferencesDialog`, where the textarea draft remains local until Save succeeds and is capped at 4,000 visible characters. The committed `userPreference` is an application-wide IndexedDB setting, not part of a chat record. `buildApiMessages()` places it in the system context before context-window-limited conversation messages, so normal sends and regenerated responses use the current value across profiles and resumed chats. `/compact` does not use the preference for its internal summary request.
 
 ## Adding a New Provider
 

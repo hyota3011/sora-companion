@@ -3,6 +3,7 @@ const DB_VERSION = 1;
 const CHATS_STORE = "chats";
 const SETTINGS_STORE = "settings";
 const RETENTION_KEY = "retentionDays";
+const USER_PREFERENCE_KEY = "userPreference";
 
 export const RETENTION_OPTIONS = [
     { value: 7, label: "7 days" },
@@ -94,6 +95,28 @@ export async function getRetentionDays() {
 
 export function saveRetentionDays(value) {
     return runTransaction(SETTINGS_STORE, "readwrite", (store) => store.put({ key: RETENTION_KEY, value }));
+}
+
+/**
+ * Reads the global instructions and preferences applied to assistant requests.
+ * @returns {Promise<string>} The saved preference text, or an empty string when none exists.
+ */
+export async function getUserPreference() {
+    const db = await getDatabase();
+    return new Promise((resolve, reject) => {
+        const request = db.transaction(SETTINGS_STORE, "readonly").objectStore(SETTINGS_STORE).get(USER_PREFERENCE_KEY);
+        request.onerror = () => reject(request.error || new Error("Unable to read user preferences"));
+        request.onsuccess = () => resolve(typeof request.result?.value === "string" ? request.result.value : "");
+    }).finally(() => db.close());
+}
+
+/**
+ * Persists the global instructions and preferences applied to assistant requests.
+ * @param {string} value - The normalized preference text to save.
+ * @returns {Promise<void>} A promise that resolves after the preference is stored.
+ */
+export async function saveUserPreference(value) {
+    await runTransaction(SETTINGS_STORE, "readwrite", (store) => store.put({ key: USER_PREFERENCE_KEY, value }));
 }
 
 export async function deleteExpiredChats(retentionDays) {

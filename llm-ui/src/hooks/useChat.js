@@ -1,8 +1,19 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { streamChat } from "../api/index.js";
 import { getDefaultModel } from "../config/models.jsx";
+import { USER_PREFERENCE_MAX_LENGTH } from "../config/preferences.js";
 import { defaultProfiles, getActiveProfile } from "../config/profiles.js";
-import { deleteExpiredChats, getChat, getRetentionDays, listChats, RETENTION_OPTIONS, saveChat, saveRetentionDays } from "../storage/chatHistory.js";
+import {
+    deleteExpiredChats,
+    getChat,
+    getRetentionDays,
+    getUserPreference,
+    listChats,
+    RETENTION_OPTIONS,
+    saveChat,
+    saveRetentionDays,
+    saveUserPreference,
+} from "../storage/chatHistory.js";
 
 function createId() {
     return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -64,7 +75,10 @@ function serializeMessages(messages) {
     }));
 }
 
-/** Manages the active chat and its IndexedDB-backed history. */
+/**
+ * Manages the active chat, global preferences, and IndexedDB-backed history.
+ * @returns {Object} The chat state, shared references, and event handlers exposed through context.
+ */
 export function useChat() {
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState("");
@@ -82,11 +96,43 @@ export function useChat() {
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [historyError, setHistoryError] = useState("");
     const [retentionDays, setRetentionDays] = useState(30);
+    const [userPreference, setUserPreference] = useState("");
+    const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+    const [isPreferenceLoading, setIsPreferenceLoading] = useState(true);
+    const [isPreferenceSaving, setIsPreferenceSaving] = useState(false);
+    const [preferenceLoadError, setPreferenceLoadError] = useState("");
+    const [preferenceError, setPreferenceError] = useState("");
 
     const choosenModelRef = useRef(getDefaultModel());
     const messagesEndRef = useRef(null);
     const textareaRef = useRef(null);
     const chatMetaRef = useRef(null);
+    const preferenceLoadIdRef = useRef(0);
+
+    /**
+     * Loads the global user preference while ignoring results from superseded reads.
+     * @returns {Promise<boolean>} Whether the preference was loaded successfully.
+     */
+    const loadUserPreference = useCallback(async () => {
+        const loadId = preferenceLoadIdRef.current + 1;
+        preferenceLoadIdRef.current = loadId;
+        setIsPreferenceLoading(true);
+        try {
+            const savedPreference = await getUserPreference();
+            if (preferenceLoadIdRef.current !== loadId) return false;
+            setUserPreference(savedPreference);
+            setPreferenceLoadError("");
+            return true;
+        } catch (error) {
+            if (preferenceLoadIdRef.current === loadId) {
+                console.error("User preference initialization failed:", error);
+                setPreferenceLoadError("Your saved preferences could not be loaded. Close and reopen this dialog to retry.");
+            }
+            return false;
+        } finally {
+            if (preferenceLoadIdRef.current === loadId) setIsPreferenceLoading(false);
+        }
+    }, []);
 
     const refreshHistory = useCallback(async (shouldClean = true, configuredRetention = retentionDays) => {
         setIsHistoryLoading(true);
@@ -120,6 +166,11 @@ export function useChat() {
         void initialiseHistory();
         return () => { cancelled = true; };
     }, []);
+
+    useEffect(() => {
+        void loadUserPreference();
+        return () => { preferenceLoadIdRef.current += 1; };
+    }, [loadUserPreference]);
 
     const persistCurrentChat = useCallback(async () => {
         if (!activeChatId || (!messages.length && !compactMemory)) return;
@@ -207,6 +258,11 @@ export function useChat() {
         setAttachedTabs((previous) => previous.filter((tab) => tab.id !== tabId));
     }, []);
 
+    /**
+     * Converts committed messages into provider-neutral context with global system instructions.
+     * @param {Array<Object>} sourceMessages - The committed conversation messages to include.
+     * @returns {Array<Object>} The context-window-limited messages ready for provider formatting.
+     */
     const buildApiMessages = useCallback((sourceMessages) => {
         const contextLimit = activeProfile?.contextMessageCount || 20;
         const mapped = sourceMessages.slice(-contextLimit).map((message) => ({
@@ -214,8 +270,16 @@ export function useChat() {
             content: withTabContext(message.text, message.tabs),
             images: message.images || [],
         }));
-        return compactMemory ? [{ role: "system", content: `Previous conversation summary:\n${compactMemory}`, images: [] }, ...mapped] : mapped;
-    }, [activeProfile, compactMemory]);
+        const normalizedPreference = userPreference.trim();
+        const systemContext = [
+            compactMemory ? `Previous conversation summary:\n${compactMemory}` : "",
+            normalizedPreference ? `User preferences and instructions:\n${normalizedPreference}` : "",
+        ].filter(Boolean).join("\n\n");
+
+        return systemContext
+            ? [{ role: "system", content: systemContext, images: [] }, ...mapped]
+            : mapped;
+    }, [activeProfile, compactMemory, userPreference]);
 
     const streamAssistantResponse = useCallback(async (apiMessages) => {
         setStreamingMessage({ text: "...thinking", sender: "assistant", isStreaming: true });
@@ -274,7 +338,7 @@ export function useChat() {
         const text = inputValue.trim();
         const images = attachedImages;
         const tabs = attachedTabs;
-        if ((!text && images.length === 0 && tabs.length === 0) || isStreaming) return;
+        if ((!text && images.length === 0 && tabs.length === 0) || isStreaming || isPreferenceLoading) return;
         if (!activeChatId) {
             const createdAt = Date.now();
             chatMetaRef.current = { createdAt, title: "" };
@@ -290,10 +354,10 @@ export function useChat() {
         if (textareaRef.current) textareaRef.current.style.height = "auto";
         setIsStreaming(true);
         await streamAssistantResponse(buildApiMessages([...messages, newUserMessage]));
-    }, [activeChatId, attachedImages, attachedTabs, buildApiMessages, handleCompact, inputValue, isFirstMessage, isStreaming, messages, streamAssistantResponse]);
+    }, [activeChatId, attachedImages, attachedTabs, buildApiMessages, handleCompact, inputValue, isFirstMessage, isPreferenceLoading, isStreaming, messages, streamAssistantResponse]);
 
     const handleRefreshLastResponse = useCallback(async () => {
-        if (isStreaming) return;
+        if (isStreaming || isPreferenceLoading) return;
         const lastAssistantIndex = findLastAssistantIndex(messages);
         const lastUserIndex = findLastUserIndexBefore(messages, lastAssistantIndex);
         if (lastAssistantIndex === -1 || lastUserIndex === -1) return;
@@ -301,7 +365,7 @@ export function useChat() {
         setMessages(sourceMessages);
         setIsStreaming(true);
         await streamAssistantResponse(buildApiMessages(sourceMessages));
-    }, [buildApiMessages, isStreaming, messages, streamAssistantResponse]);
+    }, [buildApiMessages, isPreferenceLoading, isStreaming, messages, streamAssistantResponse]);
 
     const handleEditLastUserMessage = useCallback(() => {
         if (isStreaming) return;
@@ -348,6 +412,51 @@ export function useChat() {
     }, [refreshHistory]);
 
     const handleCloseHistory = useCallback(() => setIsHistoryOpen(false), []);
+
+    /**
+     * Opens the global preferences dialog.
+     * @returns {void}
+     */
+    const handleOpenPreferences = useCallback(() => {
+        setPreferenceError("");
+        setIsPreferencesOpen(true);
+        if (preferenceLoadError) void loadUserPreference();
+    }, [loadUserPreference, preferenceLoadError]);
+
+    /**
+     * Closes the global preferences dialog and clears transient save errors.
+     * @returns {void}
+     */
+    const handleClosePreferences = useCallback(() => {
+        setIsPreferencesOpen(false);
+        setPreferenceError("");
+    }, []);
+
+    /**
+     * Persists a new global preference and commits it for subsequent model requests.
+     * @param {string} value - The preference draft entered by the user.
+     * @returns {Promise<boolean>} Whether the preference was saved successfully.
+     */
+    const handleSavePreference = useCallback(async (value) => {
+        const normalizedPreference = value.trim();
+        if (normalizedPreference.length > USER_PREFERENCE_MAX_LENGTH) {
+            setPreferenceError(`Preferences must be ${USER_PREFERENCE_MAX_LENGTH.toLocaleString()} characters or fewer.`);
+            return false;
+        }
+        setIsPreferenceSaving(true);
+        setPreferenceError("");
+        try {
+            await saveUserPreference(normalizedPreference);
+            setUserPreference(normalizedPreference);
+            return true;
+        } catch (error) {
+            console.error("Unable to save user preference:", error);
+            setPreferenceError("Your preferences could not be saved.");
+            return false;
+        } finally {
+            setIsPreferenceSaving(false);
+        }
+    }, []);
 
     const handleLoadHistory = useCallback(async (chatId) => {
         if (isStreaming) return;
@@ -404,9 +513,10 @@ export function useChat() {
         messages, inputValue, attachedImages, attachedTabs, attachmentError, isFirstMessage, isStreaming,
         streamingMessage, activeProfile, choosenModelRef, messagesEndRef, textareaRef, compactMemory,
         activeChatId, history, isHistoryOpen, isHistoryLoading, historyError, retentionDays,
+        userPreference, isPreferencesOpen, isPreferenceLoading, isPreferenceSaving, preferenceLoadError, preferenceError,
         handleProfileChange, handleInput, handleAddImageFiles, handleRemoveImage, handleAddTabs,
         handleRemoveTab, handleSend, handleRefreshLastResponse, handleEditLastUserMessage, handleKeyDown,
         handleNewChat, handleCompact, handleOpenHistory, handleCloseHistory, handleLoadHistory,
-        handleRetentionChange,
+        handleRetentionChange, handleOpenPreferences, handleClosePreferences, handleSavePreference,
     };
 }

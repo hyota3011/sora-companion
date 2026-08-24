@@ -23,7 +23,8 @@ export function BotActionButtons({ message }) {
     const {
         handleRefreshLastResponse,
         handleEditLastUserMessage,
-        isStreaming
+        isStreaming,
+        isPreferenceLoading
     } = useChatContext();
 
     const text = message.text;
@@ -46,7 +47,7 @@ export function BotActionButtons({ message }) {
                 className="bot-action-btn"
                 title="Refresh"
                 onClick={handleRefreshLastResponse}
-                disabled={isStreaming}
+                disabled={isStreaming || isPreferenceLoading}
             >
                 <RefreshIcon />
             </button>

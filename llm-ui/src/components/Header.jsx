@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { EditIcon, ChevronDownIcon, HistoryIcon, MoreHorizontalIcon, XIcon } from "./icons";
+import { PreferenceIcon, EditIcon, ChevronDownIcon, HistoryIcon, MoreHorizontalIcon, XIcon } from "./icons";
 import keyIcon from "../../static/images/KeyIcon.png";
 import { saveApiKey } from "../api/keys";
 import { _getApiKey } from "../config/profiles";
@@ -74,7 +74,13 @@ function ProfileSelector({ profiles }) {
  * @param {Array} props.profiles - List of available provider profiles.
  */
 export default function Header({ profiles }) {
-    const { activeProfile, handleNewChat, handleOpenHistory } = useChatContext();
+    const {
+        activeProfile,
+        isPreferenceLoading,
+        handleNewChat,
+        handleOpenHistory,
+        handleOpenPreferences,
+    } = useChatContext();
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const moreMenuRef = useRef(null);
 
@@ -103,6 +109,15 @@ export default function Header({ profiles }) {
         }
     };
 
+    /**
+     * Closes the More menu and opens the global preferences dialog.
+     * @returns {void}
+     */
+    const handlePreferencesClick = () => {
+        setIsMoreOpen(false);
+        handleOpenPreferences();
+    };
+
     return (
         <header className="header">
             <div className="header-left">
@@ -121,7 +136,7 @@ export default function Header({ profiles }) {
             </div>
             <div className="header-right">
                 <div className="header-more-menu" ref={moreMenuRef}>
-                    <button className="icon-btn" title="More options" aria-label="More options" aria-expanded={isMoreOpen} onClick={() => setIsMoreOpen((open) => !open)}>
+                    <button id="header-more-button" className="icon-btn" title="More options" aria-label="More options" aria-expanded={isMoreOpen} onClick={() => setIsMoreOpen((open) => !open)}>
                         <MoreHorizontalIcon />
                     </button>
                     {isMoreOpen && (
@@ -129,6 +144,10 @@ export default function Header({ profiles }) {
                             <button className="dropdown-item" role="menuitem" onClick={() => { setIsMoreOpen(false); handleOpenHistory(); }}>
                                 <div className="dropdown-item-icon"><HistoryIcon /></div>
                                 <div className="dropdown-item-content"><span className="dropdown-item-title">History</span></div>
+                            </button>
+                            <button className="dropdown-item" role="menuitem" onClick={handlePreferencesClick} disabled={isPreferenceLoading}>
+                                <div className="dropdown-item-icon"><PreferenceIcon /></div>
+                                <div className="dropdown-item-content"><span className="dropdown-item-title">Preferences</span></div>
                             </button>
                         </div>
                     )}

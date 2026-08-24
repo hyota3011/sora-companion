@@ -230,6 +230,7 @@ const ChatInput = memo(() => {
         handleAddTabs,
         handleRemoveTab,
         isStreaming,
+        isPreferenceLoading,
         textareaRef,
         activeProfile
     } = useChatContext();
@@ -406,10 +407,10 @@ const ChatInput = memo(() => {
                     <div className="toolbar-right">
                         {inputValue.trim().length > 0 || attachedImages.length > 0 ? (
                             <button
-                                className={`icon-btn action-btn send-btn ${isStreaming ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`icon-btn action-btn send-btn ${isStreaming || isPreferenceLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 onClick={handleSend}
                                 title="Send message"
-                                disabled={isStreaming}
+                                disabled={isStreaming || isPreferenceLoading}
                             >
                                 <img src={sendIconImg} alt="Send" style={{ width: '16px', height: '16px' }} />
                             </button>
