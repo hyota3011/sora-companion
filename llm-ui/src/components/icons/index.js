@@ -18,4 +18,4 @@ export * from './ImageIcon';
 export * from './PictureIcon';
 export * from './HistoryIcon';
 export * from './PreferenceIcon';
-
+export * from './IncognitoIcon';

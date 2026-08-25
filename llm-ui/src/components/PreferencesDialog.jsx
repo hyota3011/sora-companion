@@ -20,6 +20,7 @@ export default function PreferencesDialog() {
         userPreference,
         isPreferenceLoading,
         isPreferenceSaving,
+        isPreferenceIncognitoEnabled,
         preferenceLoadError,
         preferenceError,
         handleClosePreferences,
@@ -149,7 +150,11 @@ export default function PreferencesDialog() {
                         disabled={isPreferenceUnavailable || isPreferenceSaving}
                     />
                     <div className="preferences-meta">
-                        <p id="preferences-storage-note" className="preferences-note">Stored locally and sent with each request to your selected provider.</p>
+                        <p id="preferences-storage-note" className="preferences-note">
+                            {isPreferenceIncognitoEnabled
+                                ? "Stored locally. Incognito is on, so these preferences are not sent to your selected provider."
+                                : "Stored locally and sent with each request to your selected provider unless Incognito is turned on."}
+                        </p>
                         <span id="preferences-character-count" className="preferences-character-count">{draft.length.toLocaleString()} / {USER_PREFERENCE_MAX_LENGTH.toLocaleString()}</span>
                     </div>
                     {preferenceLoadError && <p className="preferences-error" role="alert">{preferenceLoadError}</p>}

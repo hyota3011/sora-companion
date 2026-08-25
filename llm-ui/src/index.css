@@ -45,10 +45,19 @@ body {
 }
 
 .header-more-menu { position: relative; }
-.dropdown-menu.header-dropdown-menu { top: calc(100% + 8px); right: 0; bottom: auto; left: auto; width: 144px; }
+.dropdown-menu.header-dropdown-menu { top: calc(100% + 8px); right: 0; bottom: auto; left: auto; width: 208px; }
 .header-dropdown-menu .dropdown-item { color: #1a1a1a; }
 .header-dropdown-menu .dropdown-item-icon,
 .header-dropdown-menu .dropdown-item-title { color: inherit; }
+.incognito-menu-item { align-items: center; }
+.incognito-menu-item .dropdown-item-icon { margin-top: 0; }
+.incognito-menu-item .dropdown-item-content { flex: 1; min-width: 0; }
+.incognito-menu-item:focus-visible { outline: 2px solid #7c5f46; outline-offset: -2px; }
+.incognito-switch { width: 32px; height: 18px; flex: 0 0 auto; padding: 2px; border-radius: 999px; background: #bbb; transition: background-color .2s ease; }
+.incognito-switch.is-enabled { background: #7c5f46; }
+.incognito-switch-thumb { display: block; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .24); transition: transform .2s ease; }
+.incognito-switch.is-enabled .incognito-switch-thumb { transform: translateX(14px); }
+.incognito-menu-error { margin: 0 12px 6px; color: #b42318; font-size: 11px; line-height: 1.35; }
 
 .drop-icon {
     margin-left: -4px;

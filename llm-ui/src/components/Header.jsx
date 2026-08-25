@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { PreferenceIcon, EditIcon, ChevronDownIcon, HistoryIcon, MoreHorizontalIcon, XIcon } from "./icons";
+import { PreferenceIcon, EditIcon, ChevronDownIcon,
+     HistoryIcon, MoreHorizontalIcon, XIcon, IncognitoIcon } from "./icons";
 import keyIcon from "../../static/images/KeyIcon.png";
 import { saveApiKey } from "../api/keys";
 import { _getApiKey } from "../config/profiles";
@@ -77,9 +78,13 @@ export default function Header({ profiles }) {
     const {
         activeProfile,
         isPreferenceLoading,
+        isPreferenceIncognitoEnabled,
+        isPreferenceIncognitoSaving,
+        preferenceIncognitoError,
         handleNewChat,
         handleOpenHistory,
         handleOpenPreferences,
+        handleTogglePreferenceIncognito,
     } = useChatContext();
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const moreMenuRef = useRef(null);
@@ -149,6 +154,23 @@ export default function Header({ profiles }) {
                                 <div className="dropdown-item-icon"><PreferenceIcon /></div>
                                 <div className="dropdown-item-content"><span className="dropdown-item-title">Preferences</span></div>
                             </button>
+                            <button
+                                type="button"
+                                className="dropdown-item incognito-menu-item"
+                                role="menuitemcheckbox"
+                                aria-checked={isPreferenceIncognitoEnabled}
+                                aria-label="Incognito: do not send saved preferences to the selected provider"
+                                title="Do not send saved preferences to the selected provider"
+                                onClick={() => { void handleTogglePreferenceIncognito(); }}
+                                disabled={isPreferenceLoading || isPreferenceIncognitoSaving}
+                            >
+                                <div className="dropdown-item-icon"><IncognitoIcon /></div>
+                                <div className="dropdown-item-content"><span className="dropdown-item-title">Incognito</span></div>
+                                <span className={`incognito-switch ${isPreferenceIncognitoEnabled ? "is-enabled" : ""}`} aria-hidden="true">
+                                    <span className="incognito-switch-thumb" />
+                                </span>
+                            </button>
+                            {preferenceIncognitoError && <p className="incognito-menu-error" role="alert">{preferenceIncognitoError}</p>}
                         </div>
                     )}
                 </div>

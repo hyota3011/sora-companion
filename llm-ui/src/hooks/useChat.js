@@ -6,11 +6,13 @@ import { defaultProfiles, getActiveProfile } from "../config/profiles.js";
 import {
     deleteExpiredChats,
     getChat,
+    getPreferenceIncognitoEnabled,
     getRetentionDays,
     getUserPreference,
     listChats,
     RETENTION_OPTIONS,
     saveChat,
+    savePreferenceIncognitoEnabled,
     saveRetentionDays,
     saveUserPreference,
 } from "../storage/chatHistory.js";
@@ -102,6 +104,9 @@ export function useChat() {
     const [isPreferenceSaving, setIsPreferenceSaving] = useState(false);
     const [preferenceLoadError, setPreferenceLoadError] = useState("");
     const [preferenceError, setPreferenceError] = useState("");
+    const [isPreferenceIncognitoEnabled, setIsPreferenceIncognitoEnabled] = useState(false);
+    const [isPreferenceIncognitoSaving, setIsPreferenceIncognitoSaving] = useState(false);
+    const [preferenceIncognitoError, setPreferenceIncognitoError] = useState("");
 
     const choosenModelRef = useRef(getDefaultModel());
     const messagesEndRef = useRef(null);
@@ -110,23 +115,27 @@ export function useChat() {
     const preferenceLoadIdRef = useRef(0);
 
     /**
-     * Loads the global user preference while ignoring results from superseded reads.
-     * @returns {Promise<boolean>} Whether the preference was loaded successfully.
+     * Loads global preference settings while ignoring results from superseded reads.
+     * @returns {Promise<boolean>} Whether the preference settings were loaded successfully.
      */
-    const loadUserPreference = useCallback(async () => {
+    const loadPreferenceSettings = useCallback(async () => {
         const loadId = preferenceLoadIdRef.current + 1;
         preferenceLoadIdRef.current = loadId;
         setIsPreferenceLoading(true);
         try {
-            const savedPreference = await getUserPreference();
+            const [savedPreference, savedIncognitoEnabled] = await Promise.all([
+                getUserPreference(),
+                getPreferenceIncognitoEnabled(),
+            ]);
             if (preferenceLoadIdRef.current !== loadId) return false;
             setUserPreference(savedPreference);
+            setIsPreferenceIncognitoEnabled(savedIncognitoEnabled);
             setPreferenceLoadError("");
             return true;
         } catch (error) {
             if (preferenceLoadIdRef.current === loadId) {
-                console.error("User preference initialization failed:", error);
-                setPreferenceLoadError("Your saved preferences could not be loaded. Close and reopen this dialog to retry.");
+                console.error("Preference settings initialization failed:", error);
+                setPreferenceLoadError("Your saved preference settings could not be loaded. Close and reopen this dialog to retry.");
             }
             return false;
         } finally {
@@ -168,9 +177,9 @@ export function useChat() {
     }, []);
 
     useEffect(() => {
-        void loadUserPreference();
+        void loadPreferenceSettings();
         return () => { preferenceLoadIdRef.current += 1; };
-    }, [loadUserPreference]);
+    }, [loadPreferenceSettings]);
 
     const persistCurrentChat = useCallback(async () => {
         if (!activeChatId || (!messages.length && !compactMemory)) return;
@@ -273,13 +282,13 @@ export function useChat() {
         const normalizedPreference = userPreference.trim();
         const systemContext = [
             compactMemory ? `Previous conversation summary:\n${compactMemory}` : "",
-            normalizedPreference ? `User preferences and instructions:\n${normalizedPreference}` : "",
+            !isPreferenceIncognitoEnabled && normalizedPreference ? `User preferences and instructions:\n${normalizedPreference}` : "",
         ].filter(Boolean).join("\n\n");
 
         return systemContext
             ? [{ role: "system", content: systemContext, images: [] }, ...mapped]
             : mapped;
-    }, [activeProfile, compactMemory, userPreference]);
+    }, [activeProfile, compactMemory, isPreferenceIncognitoEnabled, userPreference]);
 
     const streamAssistantResponse = useCallback(async (apiMessages) => {
         setStreamingMessage({ text: "...thinking", sender: "assistant", isStreaming: true });
@@ -420,8 +429,8 @@ export function useChat() {
     const handleOpenPreferences = useCallback(() => {
         setPreferenceError("");
         setIsPreferencesOpen(true);
-        if (preferenceLoadError) void loadUserPreference();
-    }, [loadUserPreference, preferenceLoadError]);
+        if (preferenceLoadError) void loadPreferenceSettings();
+    }, [loadPreferenceSettings, preferenceLoadError]);
 
     /**
      * Closes the global preferences dialog and clears transient save errors.
@@ -457,6 +466,30 @@ export function useChat() {
             setIsPreferenceSaving(false);
         }
     }, []);
+
+    /**
+     * Toggles preference Incognito mode and persists the requested setting for future popup sessions.
+     * @returns {Promise<boolean>} Whether the requested setting was saved successfully.
+     */
+    const handleTogglePreferenceIncognito = useCallback(async () => {
+        if (isPreferenceIncognitoSaving) return false;
+        const nextValue = !isPreferenceIncognitoEnabled;
+        setIsPreferenceIncognitoEnabled(nextValue);
+        setIsPreferenceIncognitoSaving(true);
+        setPreferenceIncognitoError("");
+        try {
+            await savePreferenceIncognitoEnabled(nextValue);
+            return true;
+        } catch (error) {
+            console.error("Unable to save preference Incognito setting:", error);
+            setPreferenceIncognitoError(nextValue
+                ? "Incognito is active for this popup, but the setting could not be saved."
+                : "Incognito is off for this popup, but the setting could not be saved.");
+            return false;
+        } finally {
+            setIsPreferenceIncognitoSaving(false);
+        }
+    }, [isPreferenceIncognitoEnabled, isPreferenceIncognitoSaving]);
 
     const handleLoadHistory = useCallback(async (chatId) => {
         if (isStreaming) return;
@@ -514,9 +547,10 @@ export function useChat() {
         streamingMessage, activeProfile, choosenModelRef, messagesEndRef, textareaRef, compactMemory,
         activeChatId, history, isHistoryOpen, isHistoryLoading, historyError, retentionDays,
         userPreference, isPreferencesOpen, isPreferenceLoading, isPreferenceSaving, preferenceLoadError, preferenceError,
+        isPreferenceIncognitoEnabled, isPreferenceIncognitoSaving, preferenceIncognitoError,
         handleProfileChange, handleInput, handleAddImageFiles, handleRemoveImage, handleAddTabs,
         handleRemoveTab, handleSend, handleRefreshLastResponse, handleEditLastUserMessage, handleKeyDown,
         handleNewChat, handleCompact, handleOpenHistory, handleCloseHistory, handleLoadHistory,
-        handleRetentionChange, handleOpenPreferences, handleClosePreferences, handleSavePreference,
+        handleRetentionChange, handleOpenPreferences, handleClosePreferences, handleSavePreference, handleTogglePreferenceIncognito,
     };
 }

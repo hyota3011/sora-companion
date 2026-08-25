@@ -41,7 +41,7 @@ Typing `/compact` and pressing Enter (or clicking Send) triggers conversation co
 1. `handleSend()` in `useChat.js` intercepts the literal string `/compact` before normal send logic.
 2. `handleCompact()` streams a LLM-generated summary of the full `messages[]` history (no context-window slicing — everything is sent).
 3. On success: `compactMemory` state is set to the summary text, `messages[]` is cleared, and `isFirstMessage` stays `false` so the chat view remains visible.
-4. On subsequent sends: `buildApiMessages()` includes compact memory in a provider-neutral system message, combined with the global user preference when one is saved.
+4. On subsequent sends: `buildApiMessages()` includes compact memory in a provider-neutral system message, combined with the global user preference only when preference Incognito is off.
 5. `handleNewChat()` clears `compactMemory`.
 
 **Provider note:** OpenAI and Grok accept `role: "system"` natively in the messages array. Claude does not — `src/api/claude.js` filters out system-role messages and passes them as the top-level `system` field instead.
@@ -50,7 +50,7 @@ Typing `/compact` and pressing Enter (or clicking Send) triggers conversation co
 
 ### User Preferences
 
-The More menu in `Header` opens `PreferencesDialog`, where the textarea draft remains local until Save succeeds and is capped at 4,000 visible characters. The committed `userPreference` is an application-wide IndexedDB setting, not part of a chat record. `buildApiMessages()` places it in the system context before context-window-limited conversation messages, so normal sends and regenerated responses use the current value across profiles and resumed chats. `/compact` does not use the preference for its internal summary request.
+The More menu in `Header` opens `PreferencesDialog`, where the textarea draft remains local until Save succeeds and is capped at 4,000 visible characters. The committed `userPreference` and persistent `preferenceIncognitoEnabled` switch are application-wide IndexedDB settings, not part of a chat record. `buildApiMessages()` places the preference in system context before context-window-limited conversation messages only while Incognito is off; Incognito leaves compact memory and conversation context unchanged. Normal sends and regenerated responses use the current setting across profiles and resumed chats. `/compact` does not use the preference for its internal summary request.
 
 ## Adding a New Provider
 

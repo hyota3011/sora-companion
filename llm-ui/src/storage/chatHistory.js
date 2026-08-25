@@ -4,6 +4,7 @@ const CHATS_STORE = "chats";
 const SETTINGS_STORE = "settings";
 const RETENTION_KEY = "retentionDays";
 const USER_PREFERENCE_KEY = "userPreference";
+const PREFERENCE_INCOGNITO_KEY = "preferenceIncognitoEnabled";
 
 export const RETENTION_OPTIONS = [
     { value: 7, label: "7 days" },
@@ -117,6 +118,28 @@ export async function getUserPreference() {
  */
 export async function saveUserPreference(value) {
     await runTransaction(SETTINGS_STORE, "readwrite", (store) => store.put({ key: USER_PREFERENCE_KEY, value }));
+}
+
+/**
+ * Reads whether saved preferences should be omitted from provider requests.
+ * @returns {Promise<boolean>} Whether preference Incognito mode is enabled.
+ */
+export async function getPreferenceIncognitoEnabled() {
+    const db = await getDatabase();
+    return new Promise((resolve, reject) => {
+        const request = db.transaction(SETTINGS_STORE, "readonly").objectStore(SETTINGS_STORE).get(PREFERENCE_INCOGNITO_KEY);
+        request.onerror = () => reject(request.error || new Error("Unable to read preference Incognito setting"));
+        request.onsuccess = () => resolve(request.result?.value === true);
+    }).finally(() => db.close());
+}
+
+/**
+ * Persists whether saved preferences should be omitted from provider requests.
+ * @param {boolean} value - Whether preference Incognito mode is enabled.
+ * @returns {Promise<void>} A promise that resolves after the setting is stored.
+ */
+export async function savePreferenceIncognitoEnabled(value) {
+    await runTransaction(SETTINGS_STORE, "readwrite", (store) => store.put({ key: PREFERENCE_INCOGNITO_KEY, value: Boolean(value) }));
 }
 
 export async function deleteExpiredChats(retentionDays) {
