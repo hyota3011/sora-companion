@@ -2,11 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { PreferenceIcon, EditIcon, ChevronDownIcon,
      HistoryIcon, MoreHorizontalIcon, XIcon, IncognitoIcon } from "./icons";
 import keyIcon from "../../static/images/KeyIcon.png";
-import { saveApiKey } from "../api/keys";
-import { _getApiKey } from "../config/profiles";
 import { useChatContext } from "../context/ChatContext";
-
-const VITE_PROFILE = import.meta.env.VITE_PROFILE;
 
 /**
  * A dropdown component for selecting the active LLM provider profile.
@@ -84,6 +80,7 @@ export default function Header({ profiles }) {
         handleNewChat,
         handleOpenHistory,
         handleOpenPreferences,
+        handleOpenApiKeyDialog,
         handleTogglePreferenceIncognito,
     } = useChatContext();
     const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -104,16 +101,6 @@ export default function Header({ profiles }) {
         };
     }, []);
 
-    const handleSetKey = async () => {
-        if (!activeProfile) return;
-        const key = (VITE_PROFILE != 'prod' ? await _getApiKey() : null) || window.prompt(`Enter secret key for ${activeProfile.name}:`);
-        if (key) {
-            saveApiKey(activeProfile.id, key)
-                .then(() => alert("API key saved successfully!"))
-                .catch(err => alert("Failed to save API key: " + err.message));
-        }
-    };
-
     /**
      * Closes the More menu and opens the global preferences dialog.
      * @returns {void}
@@ -133,7 +120,7 @@ export default function Header({ profiles }) {
                 {profiles && activeProfile && (
                     <>
                         <ProfileSelector profiles={profiles} />
-                        <button className="icon-btn" title="Set API Key" onClick={handleSetKey}>
+                        <button id="header-api-key-button" className="icon-btn" title="Manage API key" aria-label="Manage API key" aria-haspopup="dialog" onClick={handleOpenApiKeyDialog}>
                             <img src={keyIcon} alt="Key" style={{ width: '16px', height: '16px' }} />
                         </button>
                     </>

@@ -1,6 +1,6 @@
 ---
 name: conventions
-description: Coding style and conventions guidelines for writing and refactoring functions in this repository, including naming style and inline documentation rules.
+description: Coding and documentation conventions for this repository, including camelCase, JSDoc, and synchronized AGENTS.md guidance.
 ---
 # Coding and Function Conventions
 
@@ -13,6 +13,7 @@ This skill governs the structure, naming, and documentation of functions added o
    - Provide a clear, concise description of what the function does.
    - Document all parameters using `@param` with their types and descriptions.
    - Document the return value using `@returns` with the type and description.
+3. **Documentation Synchronization**: When a change alters behavior, architecture, storage, commands, or security boundaries, update the root `AGENTS.md` and the nearest applicable nested `AGENTS.md` in the same change. Update a skill's frontmatter description and body when the rule it governs changes.
 
 ## Example Patterns
 

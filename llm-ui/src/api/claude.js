@@ -1,4 +1,4 @@
-import { _getApiKey } from "../config/profiles";
+import { getApiKey } from "../storage/apiKeys";
 import { toClaudeMessages } from "./imageMessages";
 
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -15,10 +15,10 @@ const ANTHROPIC_VERSION = "2023-06-01";
 export async function* streamChat(messages, model, profile) {
     const { endpoint, maxTokens = 4096 } = profile;
 
-    const apiKey = await _getApiKey(profile.id);
+    const apiKey = await getApiKey(profile.id);
 
     if (!apiKey) {
-        throw new Error(`API KEY is missing for ${profile.name}.`);
+        throw new Error(`API key is missing for ${profile.name}. Use the API key button to add one.`);
     }
 
     const systemText = messages.filter(m => m.role === "system").map(m => m.content).join("\n\n");

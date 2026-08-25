@@ -1,5 +1,3 @@
-import { getApiKey, saveApiKey } from "../api/keys";
-
 export const provider = {
     OPENAI: "openai",
     //GEMINI: "gemini",
@@ -35,35 +33,11 @@ export const defaultProfiles = [
     }
 ];
 
+/**
+ * Resolves the active provider profile saved for the current browser origin.
+ * @returns {Object} The matching provider profile, or the default profile.
+ */
 export const getActiveProfile = () => {
     const saved = localStorage.getItem("activeProfileId");
     return defaultProfiles.find(p => p.id.toLowerCase() === saved?.toLowerCase()) || defaultProfiles[0];
 };
-
-function getFromEnv(id) {
-    switch (id) {
-        case provider.CLAUDE:
-            return import.meta.env.VITE_ANTHROPIC_KEY;
-        case provider.GROK:
-            return import.meta.env.VITE_XAI_KEY;
-        case provider.OPENAI:
-            return import.meta.env.VITE_OPENAI_KEY;
-        default:
-            return null;
-    }
-}
-
-export async function _getApiKey(profileId) {
-    const profile = profileId
-        ? defaultProfiles.find(p => p.id.toLowerCase() === profileId.toLowerCase())
-        : getActiveProfile();
-    if (!profile || !profile.id) return null;
-    let key = await getApiKey(profile.id);
-    if (!key) {
-        key = getFromEnv(profile.id);
-        if (key) {
-            await saveApiKey(profile.id, key);
-        }
-    }
-    return key;
-}

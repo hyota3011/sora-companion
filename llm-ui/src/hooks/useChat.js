@@ -100,6 +100,7 @@ export function useChat() {
     const [retentionDays, setRetentionDays] = useState(30);
     const [userPreference, setUserPreference] = useState("");
     const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+    const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
     const [isPreferenceLoading, setIsPreferenceLoading] = useState(true);
     const [isPreferenceSaving, setIsPreferenceSaving] = useState(false);
     const [preferenceLoadError, setPreferenceLoadError] = useState("");
@@ -428,6 +429,7 @@ export function useChat() {
      */
     const handleOpenPreferences = useCallback(() => {
         setPreferenceError("");
+        setIsApiKeyDialogOpen(false);
         setIsPreferencesOpen(true);
         if (preferenceLoadError) void loadPreferenceSettings();
     }, [loadPreferenceSettings, preferenceLoadError]);
@@ -439,6 +441,23 @@ export function useChat() {
     const handleClosePreferences = useCallback(() => {
         setIsPreferencesOpen(false);
         setPreferenceError("");
+    }, []);
+
+    /**
+     * Opens the active provider's API-key management dialog.
+     * @returns {void}
+     */
+    const handleOpenApiKeyDialog = useCallback(() => {
+        setIsPreferencesOpen(false);
+        setIsApiKeyDialogOpen(true);
+    }, []);
+
+    /**
+     * Closes the API-key management dialog without retaining transient input.
+     * @returns {void}
+     */
+    const handleCloseApiKeyDialog = useCallback(() => {
+        setIsApiKeyDialogOpen(false);
     }, []);
 
     /**
@@ -546,11 +565,12 @@ export function useChat() {
         messages, inputValue, attachedImages, attachedTabs, attachmentError, isFirstMessage, isStreaming,
         streamingMessage, activeProfile, choosenModelRef, messagesEndRef, textareaRef, compactMemory,
         activeChatId, history, isHistoryOpen, isHistoryLoading, historyError, retentionDays,
-        userPreference, isPreferencesOpen, isPreferenceLoading, isPreferenceSaving, preferenceLoadError, preferenceError,
+        userPreference, isPreferencesOpen, isApiKeyDialogOpen, isPreferenceLoading, isPreferenceSaving, preferenceLoadError, preferenceError,
         isPreferenceIncognitoEnabled, isPreferenceIncognitoSaving, preferenceIncognitoError,
         handleProfileChange, handleInput, handleAddImageFiles, handleRemoveImage, handleAddTabs,
         handleRemoveTab, handleSend, handleRefreshLastResponse, handleEditLastUserMessage, handleKeyDown,
         handleNewChat, handleCompact, handleOpenHistory, handleCloseHistory, handleLoadHistory,
-        handleRetentionChange, handleOpenPreferences, handleClosePreferences, handleSavePreference, handleTogglePreferenceIncognito,
+        handleRetentionChange, handleOpenPreferences, handleClosePreferences, handleOpenApiKeyDialog, handleCloseApiKeyDialog,
+        handleSavePreference, handleTogglePreferenceIncognito,
     };
 }

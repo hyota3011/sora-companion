@@ -12,9 +12,9 @@ export async function* streamChat(messages, model, profile) { ... }
 
 - `messages` — array of `{ role, content, images[] }` already trimmed to the context window
 - `model` — the raw API model string (the `val` field from the model config)
-- `profile` — the active profile object; use `profile.endpoint` for the URL and call `_getApiKey(profile.id)` for the key
+- `profile` — the active profile object; use `profile.endpoint` for the URL and call `getApiKey(profile.id)` from `src/storage/apiKeys.js` immediately before the request
 - Yield plain text strings (deltas only, no metadata)
-- Throw a plain `Error` on non-200 responses or stream-level errors — the caller renders `error.message` directly to the user
+- Throw a plain, non-secret-bearing `Error` on missing keys, non-200 responses, or stream-level errors — the caller renders `error.message` directly to the user
 
 ## SSE Parsing Notes
 

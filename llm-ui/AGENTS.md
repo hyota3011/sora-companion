@@ -6,7 +6,7 @@ This file provides guidance to Codex when working with code in this repository.
 
 ### State Management
 
-All chat and global-preference state lives in `src/hooks/useChat.js` and is distributed via React Context (`src/context/ChatContext.jsx`). Components consume state through `useChatContext()` — never pass chat state as props. `choosenModelRef` is a `useRef` (not state) so model switches don't trigger re-renders.
+All chat, global-preference, and top-level dialog visibility state lives in `src/hooks/useChat.js` and is distributed via React Context (`src/context/ChatContext.jsx`). Components consume state through `useChatContext()` — never pass chat state as props. API-key values are intentionally local to `ApiKeyDialog` and never enter context. `choosenModelRef` is a `useRef` (not state) so model switches don't trigger re-renders.
 
 ### Provider / Profile System
 
@@ -20,7 +20,11 @@ All chat and global-preference state lives in `src/hooks/useChat.js` and is dist
 
 ### API Key Storage
 
-Keys are stored per-provider in `chrome.storage.local` via `src/api/keys.js` (key name: `apiKey_<profileId>`). In a plain browser build keys must come from env vars (`VITE_ANTHROPIC_KEY`, `VITE_XAI_KEY`, `VITE_OPENAI_KEY`). The Manifest V3 build is configured through `@crxjs/vite-plugin` in `vite.config.js`. `VITE_PROFILE=prod` hides the existing key from the prompt dialog in the header.
+Keys are stored per provider in the dedicated `sora-api-keys` IndexedDB database via `src/storage/apiKeys.js`; the `apiKeys` store contains only `{ providerId, apiKey }`. The header opens `ApiKeyDialog`, a masked accessible dialog that shows configured status, saves/replaces a blank draft, and requires a second confirmation before deletion. Saved values are never revealed or copied into context.
+
+IndexedDB is persistent and origin-isolated but plaintext: extension DevTools, local profile access, and compromised extension code can read it. Do not use organization-wide keys; prefer restricted, revocable, spend-limited provider keys. There is no env fallback or legacy `chrome.storage` migration. Provider adapters call `getApiKey(profile.id)` immediately before their request and guide the user to the key button when none exists.
+
+The root `manifest.json` side-panel package is canonical. `vite.config.js` retains the generated popup manifest for development builds, but both manifests share the same CSP and require no `storage` permission. The build-only `client-secret-guard` rejects the three forbidden provider secret variables in client source and generated artifacts without printing secret values.
 
 ### Image Attachments
 
@@ -59,3 +63,4 @@ The More menu in `Header` opens `PreferencesDialog`, where the textarea draft re
 3. Create `src/api/<provider>.js` — see `src/api/AGENTS.md` for the required contract.
 4. Add a `case` in `src/api/index.js` to route to the new implementation.
 5. Add a `case` in `src/config/models.jsx` to return the new model list.
+6. Add the provider API origin to both manifest CSPs. If a new provider's key could be supplied through a `VITE_*` value, add that variable name to the build guard's forbidden list.

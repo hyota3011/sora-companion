@@ -5,6 +5,7 @@ import MessageList from "./components/MessageList";
 import ChatInput from "./components/ChatInput";
 import HistorySidebar from "./components/HistorySidebar";
 import PreferencesDialog from "./components/PreferencesDialog";
+import ApiKeyDialog from "./components/ApiKeyDialog";
 import { defaultProfiles } from "./config/profiles";
 
 /**
@@ -26,11 +27,12 @@ export default function Chat() {
  * @returns {import("react").ReactElement} The active chat layout and overlays.
  */
 function ChatContent() {
-    const { isFirstMessage, isPreferencesOpen, userPreference } = useChatContext();
+    const { activeProfile, isFirstMessage, isPreferencesOpen, isApiKeyDialogOpen, userPreference } = useChatContext();
+    const isModalOpen = isPreferencesOpen || isApiKeyDialogOpen;
 
     return (
         <div className="app-container">
-            <div className="app-surface" inert={isPreferencesOpen} aria-hidden={isPreferencesOpen ? "true" : undefined}>
+            <div className="app-surface" inert={isModalOpen} aria-hidden={isModalOpen ? "true" : undefined}>
                 <Header profiles={defaultProfiles} />
 
                 <main className="main-content">
@@ -45,6 +47,7 @@ function ChatContent() {
                 <HistorySidebar />
             </div>
             {isPreferencesOpen && <PreferencesDialog key={userPreference} />}
+            {isApiKeyDialogOpen && <ApiKeyDialog key={activeProfile?.id} />}
         </div>
     );
 }

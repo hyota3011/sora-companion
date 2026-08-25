@@ -591,6 +591,156 @@ button {
     opacity: .55;
 }
 
+/* Provider API-key dialog */
+.api-key-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 310;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(26, 26, 26, .36);
+}
+
+.api-key-dialog {
+    width: min(460px, 100%);
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, .1);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .2);
+}
+
+.api-key-header {
+    padding: 18px 18px 14px;
+    border-bottom: 1px solid #eee;
+}
+
+.api-key-header h2 {
+    margin: 0;
+    color: #1a1a1a;
+    font-size: 18px;
+}
+
+.api-key-header p,
+.api-key-status,
+.api-key-note,
+.api-key-error,
+.api-key-delete-confirmation {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.api-key-header p,
+.api-key-status,
+.api-key-note {
+    color: #6a6a6a;
+}
+
+.api-key-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    padding: 16px 18px;
+}
+
+.api-key-body label {
+    color: #242424;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.api-key-body input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid #ded8d1;
+    border-radius: 10px;
+    outline: none;
+    background: #fff;
+    color: #1a1a1a;
+    font: inherit;
+    font-size: 14px;
+}
+
+.api-key-body input:focus {
+    border-color: #7c5f46;
+    box-shadow: 0 0 0 3px rgba(124, 95, 70, .14);
+}
+
+.api-key-body input:disabled {
+    cursor: wait;
+    background: #f7f3f0;
+    opacity: .7;
+}
+
+.api-key-error,
+.api-key-delete-confirmation {
+    color: #b42318;
+}
+
+.api-key-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid #eee;
+}
+
+.api-key-actions-spacer {
+    flex: 1;
+}
+
+.api-key-cancel-btn,
+.api-key-save-btn,
+.api-key-delete-btn,
+.api-key-delete-confirm-btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+}
+
+.api-key-save-btn {
+    border: 0;
+    background: #242424;
+    color: #fff;
+}
+
+.api-key-save-btn:hover:not(:disabled) {
+    background: #111;
+}
+
+.api-key-delete-btn,
+.api-key-delete-confirm-btn {
+    border: 1px solid #b42318;
+    background: #fff;
+    color: #b42318;
+}
+
+.api-key-delete-confirm-btn {
+    background: #b42318;
+    color: #fff;
+}
+
+.api-key-delete-btn:hover:not(:disabled),
+.api-key-delete-confirm-btn:hover:not(:disabled) {
+    background: #8f1d13;
+    color: #fff;
+}
+
+.api-key-cancel-btn:disabled,
+.api-key-save-btn:disabled,
+.api-key-delete-btn:disabled,
+.api-key-delete-confirm-btn:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+
 /* Chat history drawer */
 .history-backdrop { position: fixed; inset: 0; z-index: 250; background: rgba(26, 26, 26, .28); }
 .history-sidebar { width: min(340px, calc(100vw - 28px)); height: 100%; display: flex; flex-direction: column; overflow: hidden; background: #fff; box-shadow: 12px 0 32px rgba(0, 0, 0, .18); animation: historySlideIn .18s ease-out; }

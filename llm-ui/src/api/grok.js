@@ -1,4 +1,4 @@
-import { _getApiKey } from '../config/profiles'
+import { getApiKey } from "../storage/apiKeys";
 import { toOpenAICompatibleMessages } from "./imageMessages";
 /**
  * Sends a chat completion request to Grok and returns an async generator
@@ -12,10 +12,10 @@ import { toOpenAICompatibleMessages } from "./imageMessages";
 export async function* streamChat(messages, model, profile) {
     const { endpoint } = profile;
 
-    const apiKey = await _getApiKey(profile.id);
+    const apiKey = await getApiKey(profile.id);
 
     if (!apiKey) {
-        throw new Error(`API KEY is missing for ${profile.name}.`);
+        throw new Error(`API key is missing for ${profile.name}. Use the API key button to add one.`);
     }
 
     const response = await fetch(endpoint, {

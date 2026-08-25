@@ -16,7 +16,7 @@ If you only read one section, read this one:
 
 - Text chat with streaming assistant responses
 - Provider switching and model switching
-- Persistent API key management
+- Persistent per-provider API key management through a masked dialog
 - Image upload from file picker
 - Drag-and-drop images into the input area
 - Paste images directly from the clipboard
@@ -29,6 +29,12 @@ If you only read one section, read this one:
 - **Response Feedback**: Toggleable Like/Dislike buttons for rating assistant output
 - **Copy & Share**: Easy one-click copying of assistant messages to the clipboard
 
+## API key security
+
+Provider keys are saved per provider in the extension-origin IndexedDB database `sora-api-keys`. They persist across side-panel sessions but are plaintext local storage, not a password vault. The app never displays a saved key again, never stores keys in chats or preferences, and reads each key only immediately before a provider request.
+
+Do not put provider credentials in Vite `VITE_*` variables: they are bundled into client assets. Use personal, restricted, revocable, spend-limited keys, and use the header key button to save, replace, or delete them.
+
 ## Project structure
 
 ### `src/components/`
@@ -38,6 +44,7 @@ If you only read one section, read this one:
 - `MessageList.jsx`: renders chat history plus the current streaming message
 - `MessageItem.jsx`: renders each message bubble; assistant messages support markdown, code blocks, and an action toolbar (Refresh, Edit, Feedback, Copy/Share); user messages can also render sent images
 - `ChatInput.jsx`: chat composer with textarea, attachment menu, drag-and-drop support, image previews, and model selector
+- `ApiKeyDialog.jsx`: accessible masked dialog for saving, replacing, and deleting the active provider key
 
 ### `src/context/`
 
@@ -52,11 +59,15 @@ If you only read one section, read this one:
 - `index.js`: provider-agnostic router for `streamChat`
 - `openai.js`, `grok.js`, `claude.js`: provider-specific request/stream handling
 - `imageMessages.js`: converts the app's internal message shape into the image format expected by each provider
-- `keys.js`: browser storage utilities for API keys
+
+### `src/storage/`
+
+- `apiKeys.js`: IndexedDB storage utilities for per-provider API keys
+- `chatHistory.js`: IndexedDB storage for chats, retention, and user preferences
 
 ### `src/config/`
 
-- `profiles.js`: provider config, endpoints, active profile lookup, and API key lookup
+- `profiles.js`: provider config, endpoints, and active profile lookup
 - `models.jsx`: returns the models available for the current provider
 - `openai.jsx`, `grok.jsx`, `claude.jsx`: model metadata and icons
 
