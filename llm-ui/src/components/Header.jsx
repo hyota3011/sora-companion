@@ -2,17 +2,17 @@ import { useState, useRef, useEffect } from "react";
 import { PreferenceIcon, EditIcon, ChevronDownIcon,
      HistoryIcon, MoreHorizontalIcon, XIcon, IncognitoIcon } from "./icons";
 import keyIcon from "../../static/images/KeyIcon.png";
-import { useChatContext } from "../context/ChatContext";
+import { useConversationContext, useHistoryContext, useSettingsContext } from "../context/ChatContext";
 
 /**
  * A dropdown component for selecting the active LLM provider profile.
- * Consumes data from ChatContext to avoid prop drilling.
+ * Consumes conversation data to avoid prop drilling.
  * 
  * @param {Object} props - The component props.
  * @param {Array} props.profiles - List of available provider profiles.
  */
 function ProfileSelector({ profiles }) {
-    const { activeProfile, handleProfileChange } = useChatContext();
+    const { activeProfile, handleProfileChange } = useConversationContext();
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
 
@@ -65,7 +65,7 @@ function ProfileSelector({ profiles }) {
 /**
  * The top navigation header of the chat interface.
  * Contains the new chat button, profile selector, and API key management.
- * Consumes data from ChatContext to avoid prop drilling.
+ * Consumes the relevant chat domain contexts to avoid prop drilling.
  * 
  * @param {Object} props - The component props.
  * @param {Array} props.profiles - List of available provider profiles.
@@ -73,16 +73,18 @@ function ProfileSelector({ profiles }) {
 export default function Header({ profiles }) {
     const {
         activeProfile,
+        handleNewChat,
+    } = useConversationContext();
+    const { handleOpenHistory } = useHistoryContext();
+    const {
         isPreferenceLoading,
         isPreferenceIncognitoEnabled,
         isPreferenceIncognitoSaving,
         preferenceIncognitoError,
-        handleNewChat,
-        handleOpenHistory,
         handleOpenPreferences,
         handleOpenApiKeyDialog,
         handleTogglePreferenceIncognito,
-    } = useChatContext();
+    } = useSettingsContext();
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const moreMenuRef = useRef(null);
 

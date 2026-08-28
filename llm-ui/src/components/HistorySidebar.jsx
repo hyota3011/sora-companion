@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { XIcon } from "./icons";
-import { useChatContext } from "../context/ChatContext";
+import { useConversationContext, useHistoryContext } from "../context/ChatContext";
 import { RETENTION_OPTIONS } from "../storage/chatHistory";
 
 function formatUpdatedAt(timestamp) {
@@ -19,9 +19,9 @@ export default function HistorySidebar() {
         historyError,
         isHistoryLoading,
         isHistoryOpen,
-        isStreaming,
         retentionDays,
-    } = useChatContext();
+    } = useHistoryContext();
+    const { isStreaming } = useConversationContext();
 
     useEffect(() => {
         if (!isHistoryOpen) return undefined;

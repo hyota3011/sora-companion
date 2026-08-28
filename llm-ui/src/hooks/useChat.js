@@ -1,401 +1,70 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import { streamChat } from "../api/index.js";
-import { getDefaultModel } from "../config/models.jsx";
-import { USER_PREFERENCE_MAX_LENGTH } from "../config/preferences.js";
-import { defaultProfiles, getActiveProfile } from "../config/profiles.js";
-import {
-    deleteExpiredChats,
-    getChat,
-    getPreferenceIncognitoEnabled,
-    getRetentionDays,
-    getUserPreference,
-    listChats,
-    RETENTION_OPTIONS,
-    saveChat,
-    savePreferenceIncognitoEnabled,
-    saveRetentionDays,
-    saveUserPreference,
-} from "../storage/chatHistory.js";
-
-function createId() {
-    return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function readFileAsDataUrl(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error || new Error("Unable to read image"));
-        reader.readAsDataURL(file);
-    });
-}
-
-function validateImageData(dataUrl) {
-    return new Promise((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve();
-        image.onerror = () => reject(new Error("Invalid image file"));
-        image.src = dataUrl;
-    });
-}
-
-function findLastAssistantIndex(messages) {
-    return messages.map((msg) => msg.sender).lastIndexOf("assistant");
-}
-
-function findLastUserIndexBefore(messages, beforeIndex) {
-    return messages.slice(0, beforeIndex).map((msg) => msg.sender).lastIndexOf("user");
-}
-
-function withTabContext(text, tabs = []) {
-    if (!tabs.length) return text;
-    const pageContext = tabs.map((tab) => `Page title: ${tab.title}\nPage URL: ${tab.url}\nPage content:\n${tab.content}`).join("\n\n---\n\n");
-    return `${text}${text ? "\n\n" : ""}Attached browser tabs:\n${pageContext}`;
-}
-
-function fallbackTitle(createdAt) {
-    return `Chat · ${new Date(createdAt).toLocaleString()}`;
-}
-
-function getChatTitle(messages, previousTitle, createdAt) {
-    const latestUserMessage = [...messages].reverse().find((message) => message.sender === "user");
-    if (!latestUserMessage) return previousTitle || fallbackTitle(createdAt);
-    const text = (latestUserMessage.text || "").replace(/\s+/g, " ").trim();
-    if (!text) return fallbackTitle(createdAt);
-    return text.length > 60 ? `${text.slice(0, 59).trimEnd()}…` : text;
-}
-
-/** Images are deliberately excluded from durable history. */
-function serializeMessages(messages) {
-    return messages.map(({ id, text, sender, isError, feedback, tabs }) => ({
-        id,
-        text: text || "",
-        sender,
-        ...(isError ? { isError: true } : {}),
-        ...(feedback !== undefined ? { feedback } : {}),
-        ...(tabs?.length ? { tabs } : {}),
-    }));
-}
+import { useCallback, useMemo } from "react";
+import { useChatComposer } from "./useChatComposer.js";
+import { useChatHistory } from "./useChatHistory.js";
+import { useChatSession } from "./useChatSession.js";
+import { useChatSettings } from "./useChatSettings.js";
 
 /**
- * Manages the active chat, global preferences, and IndexedDB-backed history.
- * @returns {Object} The chat state, shared references, and event handlers exposed through context.
+ * Composes the domain hooks that power the active chat experience.
+ * @returns {Object} Memoized conversation, composer, history, and settings context slices.
  */
 export function useChat() {
-    const [messages, setMessages] = useState([]);
-    const [inputValue, setInputValue] = useState("");
-    const [isFirstMessage, setIsFirstMessage] = useState(true);
-    const [isStreaming, setIsStreaming] = useState(false);
-    const [streamingMessage, setStreamingMessage] = useState(null);
-    const [activeProfile, setActiveProfile] = useState(getActiveProfile());
-    const [attachedImages, setAttachedImages] = useState([]);
-    const [attachedTabs, setAttachedTabs] = useState([]);
-    const [attachmentError, setAttachmentError] = useState("");
-    const [compactMemory, setCompactMemory] = useState(null);
-    const [activeChatId, setActiveChatId] = useState(null);
-    const [history, setHistory] = useState([]);
-    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-    const [historyError, setHistoryError] = useState("");
-    const [retentionDays, setRetentionDays] = useState(30);
-    const [userPreference, setUserPreference] = useState("");
-    const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
-    const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
-    const [isPreferenceLoading, setIsPreferenceLoading] = useState(true);
-    const [isPreferenceSaving, setIsPreferenceSaving] = useState(false);
-    const [preferenceLoadError, setPreferenceLoadError] = useState("");
-    const [preferenceError, setPreferenceError] = useState("");
-    const [isPreferenceIncognitoEnabled, setIsPreferenceIncognitoEnabled] = useState(false);
-    const [isPreferenceIncognitoSaving, setIsPreferenceIncognitoSaving] = useState(false);
-    const [preferenceIncognitoError, setPreferenceIncognitoError] = useState("");
-
-    const choosenModelRef = useRef(getDefaultModel());
-    const messagesEndRef = useRef(null);
-    const textareaRef = useRef(null);
-    const chatMetaRef = useRef(null);
-    const preferenceLoadIdRef = useRef(0);
+    const composer = useChatComposer();
+    const settings = useChatSettings();
+    const session = useChatSession({
+        userPreference: settings.userPreference,
+        isPreferenceIncognitoEnabled: settings.isPreferenceIncognitoEnabled,
+        isPreferenceLoading: settings.isPreferenceLoading,
+        restoreComposerMessage: composer.restoreComposerMessage,
+    });
+    const { clearComposer, inputValue, attachedImages, attachedTabs } = composer;
+    const { restoreSession, resetSession, sendMessage, handleCompact } = session;
 
     /**
-     * Loads global preference settings while ignoring results from superseded reads.
-     * @returns {Promise<boolean>} Whether the preference settings were loaded successfully.
+     * Restores a saved conversation and clears its transient composer state.
+     * @param {Object} chat - The persisted chat record to restore.
+     * @returns {void}
      */
-    const loadPreferenceSettings = useCallback(async () => {
-        const loadId = preferenceLoadIdRef.current + 1;
-        preferenceLoadIdRef.current = loadId;
-        setIsPreferenceLoading(true);
-        try {
-            const [savedPreference, savedIncognitoEnabled] = await Promise.all([
-                getUserPreference(),
-                getPreferenceIncognitoEnabled(),
-            ]);
-            if (preferenceLoadIdRef.current !== loadId) return false;
-            setUserPreference(savedPreference);
-            setIsPreferenceIncognitoEnabled(savedIncognitoEnabled);
-            setPreferenceLoadError("");
-            return true;
-        } catch (error) {
-            if (preferenceLoadIdRef.current === loadId) {
-                console.error("Preference settings initialization failed:", error);
-                setPreferenceLoadError("Your saved preference settings could not be loaded. Close and reopen this dialog to retry.");
-            }
-            return false;
-        } finally {
-            if (preferenceLoadIdRef.current === loadId) setIsPreferenceLoading(false);
-        }
-    }, []);
+    const restoreChat = useCallback((chat) => {
+        restoreSession(chat);
+        clearComposer();
+    }, [clearComposer, restoreSession]);
 
-    const refreshHistory = useCallback(async (shouldClean = true, configuredRetention = retentionDays) => {
-        setIsHistoryLoading(true);
-        setHistoryError("");
-        try {
-            if (shouldClean) await deleteExpiredChats(configuredRetention);
-            setHistory(await listChats());
-        } catch (error) {
-            console.error("Chat history error:", error);
-            setHistoryError("Saved chat history is unavailable right now.");
-        } finally {
-            setIsHistoryLoading(false);
-        }
-    }, [retentionDays]);
-
-    useEffect(() => {
-        let cancelled = false;
-        async function initialiseHistory() {
-            try {
-                const savedRetention = await getRetentionDays();
-                if (cancelled) return;
-                setRetentionDays(savedRetention);
-                await deleteExpiredChats(savedRetention);
-                const chats = await listChats();
-                if (!cancelled) setHistory(chats);
-            } catch (error) {
-                console.error("Chat history initialization failed:", error);
-                if (!cancelled) setHistoryError("Saved chat history is unavailable right now.");
-            }
-        }
-        void initialiseHistory();
-        return () => { cancelled = true; };
-    }, []);
-
-    useEffect(() => {
-        void loadPreferenceSettings();
-        return () => { preferenceLoadIdRef.current += 1; };
-    }, [loadPreferenceSettings]);
-
-    const persistCurrentChat = useCallback(async () => {
-        if (!activeChatId || (!messages.length && !compactMemory)) return;
-        const meta = chatMetaRef.current || { createdAt: Date.now(), title: "" };
-        const title = getChatTitle(messages, meta.title, meta.createdAt);
-        const record = {
-            id: activeChatId,
-            title,
-            messages: serializeMessages(messages),
-            compactMemory: compactMemory || null,
-            createdAt: meta.createdAt,
-            updatedAt: Date.now(),
-        };
-        try {
-            await saveChat(record);
-            chatMetaRef.current = { createdAt: record.createdAt, title };
-            setHistory((current) => [record, ...current.filter((chat) => chat.id !== record.id)]);
-            setHistoryError("");
-        } catch (error) {
-            console.error("Unable to save chat history:", error);
-            setHistoryError("This chat could not be saved.");
-        }
-    }, [activeChatId, compactMemory, messages]);
-
-    useEffect(() => {
-        if (!activeChatId || (!messages.length && !compactMemory)) return undefined;
-        const timer = window.setTimeout(() => { void persistCurrentChat(); }, 250);
-        return () => window.clearTimeout(timer);
-    }, [activeChatId, compactMemory, messages, persistCurrentChat]);
-
-    const handleProfileChange = useCallback((profileId) => {
-        const newProfile = defaultProfiles.find((profile) => profile.id === profileId);
-        if (!newProfile) return;
-        setActiveProfile(newProfile);
-        localStorage.setItem("activeProfileId", profileId);
-        choosenModelRef.current = getDefaultModel();
-    }, []);
-
-    const handleInput = useCallback((event) => {
-        const target = event.target;
-        setInputValue(target.value);
-        if (target.style && Number.isFinite(target.scrollHeight)) {
-            target.style.height = "auto";
-            target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
-        }
-    }, []);
-
-    const handleAddImageFiles = useCallback(async (fileList) => {
-        const files = Array.from(fileList || []);
-        if (!files.length) return;
-        const validImages = [];
-        const invalidFiles = [];
-        for (const file of files) {
-            if (!file.type?.startsWith("image/")) {
-                invalidFiles.push(file.name);
-                continue;
-            }
-            try {
-                const dataUrl = await readFileAsDataUrl(file);
-                await validateImageData(dataUrl);
-                validImages.push({ id: createId(), name: file.name, mimeType: file.type, dataUrl, size: file.size });
-            } catch (error) {
-                console.error("Image validation failed:", error);
-                invalidFiles.push(file.name);
-            }
-        }
-        if (validImages.length) setAttachedImages((previous) => [...previous, ...validImages]);
-        setAttachmentError(invalidFiles.length ? `${invalidFiles.length} file${invalidFiles.length === 1 ? "" : "s"} skipped because they were not valid images.` : "");
-    }, []);
-
-    const handleRemoveImage = useCallback((imageId) => {
-        setAttachedImages((previous) => previous.filter((image) => image.id !== imageId));
-        setAttachmentError("");
-    }, []);
-
-    const handleAddTabs = useCallback((tabs) => {
-        setAttachedTabs((previous) => {
-            const byId = new Map(previous.map((tab) => [tab.id, tab]));
-            tabs.forEach((tab) => byId.set(tab.id, tab));
-            return [...byId.values()];
-        });
-    }, []);
-
-    const handleRemoveTab = useCallback((tabId) => {
-        setAttachedTabs((previous) => previous.filter((tab) => tab.id !== tabId));
-    }, []);
+    const history = useChatHistory({
+        activeChatId: session.activeChatId,
+        messages: session.messages,
+        compactMemory: session.compactMemory,
+        chatMetaRef: session.chatMetaRef,
+        isStreaming: session.isStreaming,
+        restoreChat,
+    });
+    const { persistCurrentChat } = history;
 
     /**
-     * Converts committed messages into provider-neutral context with global system instructions.
-     * @param {Array<Object>} sourceMessages - The committed conversation messages to include.
-     * @returns {Array<Object>} The context-window-limited messages ready for provider formatting.
+     * Starts a normal request or intercepts the compact slash command.
+     * @returns {Promise<void>} Resolves once the requested operation has completed.
      */
-    const buildApiMessages = useCallback((sourceMessages) => {
-        const contextLimit = activeProfile?.contextMessageCount || 20;
-        const mapped = sourceMessages.slice(-contextLimit).map((message) => ({
-            role: message.sender === "user" ? "user" : "assistant",
-            content: withTabContext(message.text, message.tabs),
-            images: message.images || [],
-        }));
-        const normalizedPreference = userPreference.trim();
-        const systemContext = [
-            compactMemory ? `Previous conversation summary:\n${compactMemory}` : "",
-            !isPreferenceIncognitoEnabled && normalizedPreference ? `User preferences and instructions:\n${normalizedPreference}` : "",
-        ].filter(Boolean).join("\n\n");
-
-        return systemContext
-            ? [{ role: "system", content: systemContext, images: [] }, ...mapped]
-            : mapped;
-    }, [activeProfile, compactMemory, isPreferenceIncognitoEnabled, userPreference]);
-
-    const streamAssistantResponse = useCallback(async (apiMessages) => {
-        setStreamingMessage({ text: "...thinking", sender: "assistant", isStreaming: true });
-        try {
-            let accumulated = "";
-            for await (const delta of streamChat(apiMessages, choosenModelRef.current.val, activeProfile)) {
-                accumulated += delta;
-                setStreamingMessage({ text: accumulated, sender: "assistant", isStreaming: true });
-            }
-            setMessages((previous) => [...previous, { id: createId(), text: accumulated, sender: "assistant", isStreaming: false, feedback: null }]);
-            setStreamingMessage(null);
-        } catch (error) {
-            console.error("Streaming error:", error);
-            const text = error.message === "Failed to fetch" ? "Invalid API Key or Network error" : error.message;
-            setMessages((previous) => [...previous, { id: createId(), text, sender: "assistant", isError: true, feedback: null }]);
-            setStreamingMessage(null);
-        } finally {
-            setIsStreaming(false);
-        }
-    }, [activeProfile]);
-
-    const handleCompact = useCallback(async () => {
-        if (isStreaming || messages.length === 0) return;
-        setIsStreaming(true);
-        setStreamingMessage({ text: "...thinking", sender: "assistant", isStreaming: true });
-        const compactApiMessages = [
-            ...messages.map((message) => ({ role: message.sender === "user" ? "user" : "assistant", content: message.text, images: message.images || [] })),
-            { role: "user", content: "Please provide a concise summary of the above conversation. Focus on key decisions, facts, and context that would be needed to continue the conversation. Be brief and factual.", images: [] },
-        ];
-        try {
-            let summary = "";
-            for await (const delta of streamChat(compactApiMessages, choosenModelRef.current.val, activeProfile)) {
-                summary += delta;
-                setStreamingMessage({ text: summary, sender: "assistant", isStreaming: true });
-            }
-            setStreamingMessage(null);
-            setCompactMemory(summary);
-            setMessages([]);
-        } catch (error) {
-            console.error("Compact error:", error);
-            const text = error.message === "Failed to fetch" ? "Invalid API Key or Network error" : error.message;
-            setMessages((previous) => [...previous, { id: createId(), text, sender: "assistant", isError: true, feedback: null }]);
-            setStreamingMessage(null);
-        } finally {
-            setIsStreaming(false);
-        }
-    }, [activeProfile, isStreaming, messages]);
-
     const handleSend = useCallback(async () => {
         if (inputValue.trim() === "/compact") {
-            setInputValue("");
-            if (textareaRef.current) textareaRef.current.style.height = "auto";
+            clearComposer({ resetTextarea: true });
             await handleCompact();
             return;
         }
-        const text = inputValue.trim();
-        const images = attachedImages;
-        const tabs = attachedTabs;
-        if ((!text && images.length === 0 && tabs.length === 0) || isStreaming || isPreferenceLoading) return;
-        if (!activeChatId) {
-            const createdAt = Date.now();
-            chatMetaRef.current = { createdAt, title: "" };
-            setActiveChatId(createId());
-        }
-        if (isFirstMessage) setIsFirstMessage(false);
-        const newUserMessage = { id: createId(), text, sender: "user", images, tabs };
-        setMessages((previous) => [...previous, newUserMessage]);
-        setInputValue("");
-        setAttachedImages([]);
-        setAttachedTabs([]);
-        setAttachmentError("");
-        if (textareaRef.current) textareaRef.current.style.height = "auto";
-        setIsStreaming(true);
-        await streamAssistantResponse(buildApiMessages([...messages, newUserMessage]));
-    }, [activeChatId, attachedImages, attachedTabs, buildApiMessages, handleCompact, inputValue, isFirstMessage, isPreferenceLoading, isStreaming, messages, streamAssistantResponse]);
-
-    const handleRefreshLastResponse = useCallback(async () => {
-        if (isStreaming || isPreferenceLoading) return;
-        const lastAssistantIndex = findLastAssistantIndex(messages);
-        const lastUserIndex = findLastUserIndexBefore(messages, lastAssistantIndex);
-        if (lastAssistantIndex === -1 || lastUserIndex === -1) return;
-        const sourceMessages = messages.slice(0, lastAssistantIndex);
-        setMessages(sourceMessages);
-        setIsStreaming(true);
-        await streamAssistantResponse(buildApiMessages(sourceMessages));
-    }, [buildApiMessages, isPreferenceLoading, isStreaming, messages, streamAssistantResponse]);
-
-    const handleEditLastUserMessage = useCallback(() => {
-        if (isStreaming) return;
-        const lastAssistantIndex = findLastAssistantIndex(messages);
-        const lastUserIndex = findLastUserIndexBefore(messages, lastAssistantIndex);
-        if (lastAssistantIndex === -1 || lastUserIndex === -1) return;
-        const lastUserMessage = messages[lastUserIndex];
-        setMessages(messages.slice(0, lastUserIndex));
-        setInputValue(lastUserMessage.text || "");
-        setAttachedImages(lastUserMessage.images || []);
-        setAttachedTabs(lastUserMessage.tabs || []);
-        setAttachmentError("");
-        requestAnimationFrame(() => {
-            if (!textareaRef.current) return;
-            textareaRef.current.focus();
-            textareaRef.current.style.height = "auto";
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+        const request = sendMessage({
+            text: inputValue.trim(),
+            images: attachedImages,
+            tabs: attachedTabs,
         });
-    }, [isStreaming, messages]);
+        if (!request) return;
+        clearComposer({ resetTextarea: true });
+        await request;
+    }, [attachedImages, attachedTabs, clearComposer, handleCompact, inputValue, sendMessage]);
 
+    /**
+     * Sends the composer draft when Enter is pressed without Shift.
+     * @param {KeyboardEvent} event - The textarea keyboard event.
+     * @returns {void}
+     */
     const handleKeyDown = useCallback((event) => {
         if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
@@ -403,174 +72,56 @@ export function useChat() {
         }
     }, [handleSend]);
 
+    /**
+     * Saves the active conversation before clearing it and its composer draft.
+     * @returns {void}
+     */
     const handleNewChat = useCallback(() => {
         void persistCurrentChat();
-        setMessages([]);
-        setIsFirstMessage(true);
-        setInputValue("");
-        setAttachedImages([]);
-        setAttachedTabs([]);
-        setAttachmentError("");
-        setCompactMemory(null);
-        setActiveChatId(null);
-        chatMetaRef.current = null;
-    }, [persistCurrentChat]);
+        resetSession();
+        clearComposer();
+    }, [clearComposer, persistCurrentChat, resetSession]);
 
-    const handleOpenHistory = useCallback(() => {
-        setIsHistoryOpen(true);
-        void refreshHistory();
-    }, [refreshHistory]);
+    const conversation = useMemo(() => ({
+        messages: session.messages,
+        isFirstMessage: session.isFirstMessage,
+        isStreaming: session.isStreaming,
+        streamingMessage: session.streamingMessage,
+        activeProfile: session.activeProfile,
+        compactMemory: session.compactMemory,
+        choosenModelRef: session.choosenModelRef,
+        messagesEndRef: session.messagesEndRef,
+        handleProfileChange: session.handleProfileChange,
+        handleCompact: session.handleCompact,
+        handleRefreshLastResponse: session.handleRefreshLastResponse,
+        handleEditLastUserMessage: session.handleEditLastUserMessage,
+        handleNewChat,
+    }), [handleNewChat, session.activeProfile, session.choosenModelRef, session.compactMemory, session.handleCompact, session.handleEditLastUserMessage, session.handleProfileChange, session.handleRefreshLastResponse, session.isFirstMessage, session.isStreaming, session.messages, session.messagesEndRef, session.streamingMessage]);
 
-    const handleCloseHistory = useCallback(() => setIsHistoryOpen(false), []);
+    const composerContext = useMemo(() => ({
+        inputValue: composer.inputValue,
+        attachedImages: composer.attachedImages,
+        attachedTabs: composer.attachedTabs,
+        attachmentError: composer.attachmentError,
+        textareaRef: composer.textareaRef,
+        handleInput: composer.handleInput,
+        handleAddImageFiles: composer.handleAddImageFiles,
+        handleRemoveImage: composer.handleRemoveImage,
+        handleAddTabs: composer.handleAddTabs,
+        handleRemoveTab: composer.handleRemoveTab,
+        handleSend,
+        handleKeyDown,
+    }), [composer, handleKeyDown, handleSend]);
 
-    /**
-     * Opens the global preferences dialog.
-     * @returns {void}
-     */
-    const handleOpenPreferences = useCallback(() => {
-        setPreferenceError("");
-        setIsApiKeyDialogOpen(false);
-        setIsPreferencesOpen(true);
-        if (preferenceLoadError) void loadPreferenceSettings();
-    }, [loadPreferenceSettings, preferenceLoadError]);
+    const historyContext = useMemo(() => ({
+        ...history,
+        activeChatId: session.activeChatId,
+    }), [history, session.activeChatId]);
 
-    /**
-     * Closes the global preferences dialog and clears transient save errors.
-     * @returns {void}
-     */
-    const handleClosePreferences = useCallback(() => {
-        setIsPreferencesOpen(false);
-        setPreferenceError("");
-    }, []);
-
-    /**
-     * Opens the active provider's API-key management dialog.
-     * @returns {void}
-     */
-    const handleOpenApiKeyDialog = useCallback(() => {
-        setIsPreferencesOpen(false);
-        setIsApiKeyDialogOpen(true);
-    }, []);
-
-    /**
-     * Closes the API-key management dialog without retaining transient input.
-     * @returns {void}
-     */
-    const handleCloseApiKeyDialog = useCallback(() => {
-        setIsApiKeyDialogOpen(false);
-    }, []);
-
-    /**
-     * Persists a new global preference and commits it for subsequent model requests.
-     * @param {string} value - The preference draft entered by the user.
-     * @returns {Promise<boolean>} Whether the preference was saved successfully.
-     */
-    const handleSavePreference = useCallback(async (value) => {
-        const normalizedPreference = value.trim();
-        if (normalizedPreference.length > USER_PREFERENCE_MAX_LENGTH) {
-            setPreferenceError(`Preferences must be ${USER_PREFERENCE_MAX_LENGTH.toLocaleString()} characters or fewer.`);
-            return false;
-        }
-        setIsPreferenceSaving(true);
-        setPreferenceError("");
-        try {
-            await saveUserPreference(normalizedPreference);
-            setUserPreference(normalizedPreference);
-            return true;
-        } catch (error) {
-            console.error("Unable to save user preference:", error);
-            setPreferenceError("Your preferences could not be saved.");
-            return false;
-        } finally {
-            setIsPreferenceSaving(false);
-        }
-    }, []);
-
-    /**
-     * Toggles preference Incognito mode and persists the requested setting for future popup sessions.
-     * @returns {Promise<boolean>} Whether the requested setting was saved successfully.
-     */
-    const handleTogglePreferenceIncognito = useCallback(async () => {
-        if (isPreferenceIncognitoSaving) return false;
-        const nextValue = !isPreferenceIncognitoEnabled;
-        setIsPreferenceIncognitoEnabled(nextValue);
-        setIsPreferenceIncognitoSaving(true);
-        setPreferenceIncognitoError("");
-        try {
-            await savePreferenceIncognitoEnabled(nextValue);
-            return true;
-        } catch (error) {
-            console.error("Unable to save preference Incognito setting:", error);
-            setPreferenceIncognitoError(nextValue
-                ? "Incognito is active for this popup, but the setting could not be saved."
-                : "Incognito is off for this popup, but the setting could not be saved.");
-            return false;
-        } finally {
-            setIsPreferenceIncognitoSaving(false);
-        }
-    }, [isPreferenceIncognitoEnabled, isPreferenceIncognitoSaving]);
-
-    const handleLoadHistory = useCallback(async (chatId) => {
-        if (isStreaming) return;
-        await persistCurrentChat();
-        setIsHistoryLoading(true);
-        setHistoryError("");
-        try {
-            const chat = await getChat(chatId);
-            if (!chat) {
-                await refreshHistory();
-                return;
-            }
-            const resumedChat = { ...chat, updatedAt: Date.now() };
-            await saveChat(resumedChat);
-            chatMetaRef.current = { createdAt: chat.createdAt, title: chat.title };
-            setActiveChatId(chat.id);
-            setMessages(Array.isArray(chat.messages) ? chat.messages : []);
-            setCompactMemory(chat.compactMemory || null);
-            setInputValue("");
-            setAttachedImages([]);
-            setAttachedTabs([]);
-            setAttachmentError("");
-            setIsFirstMessage(!(chat.messages?.length || chat.compactMemory));
-            setHistory((current) => [resumedChat, ...current.filter((entry) => entry.id !== chat.id)]);
-            setIsHistoryOpen(false);
-        } catch (error) {
-            console.error("Unable to restore chat history:", error);
-            setHistoryError("This saved chat could not be opened.");
-        } finally {
-            setIsHistoryLoading(false);
-        }
-    }, [isStreaming, persistCurrentChat, refreshHistory]);
-
-    const handleRetentionChange = useCallback(async (value) => {
-        const nextRetention = value === "never" ? null : Number(value);
-        if (!RETENTION_OPTIONS.some((option) => option.value === nextRetention)) return;
-        setIsHistoryLoading(true);
-        setHistoryError("");
-        try {
-            await persistCurrentChat();
-            await saveRetentionDays(nextRetention);
-            setRetentionDays(nextRetention);
-            await deleteExpiredChats(nextRetention);
-            setHistory(await listChats());
-        } catch (error) {
-            console.error("Unable to update history retention:", error);
-            setHistoryError("History retention could not be updated.");
-        } finally {
-            setIsHistoryLoading(false);
-        }
-    }, [persistCurrentChat]);
-
-    return {
-        messages, inputValue, attachedImages, attachedTabs, attachmentError, isFirstMessage, isStreaming,
-        streamingMessage, activeProfile, choosenModelRef, messagesEndRef, textareaRef, compactMemory,
-        activeChatId, history, isHistoryOpen, isHistoryLoading, historyError, retentionDays,
-        userPreference, isPreferencesOpen, isApiKeyDialogOpen, isPreferenceLoading, isPreferenceSaving, preferenceLoadError, preferenceError,
-        isPreferenceIncognitoEnabled, isPreferenceIncognitoSaving, preferenceIncognitoError,
-        handleProfileChange, handleInput, handleAddImageFiles, handleRemoveImage, handleAddTabs,
-        handleRemoveTab, handleSend, handleRefreshLastResponse, handleEditLastUserMessage, handleKeyDown,
-        handleNewChat, handleCompact, handleOpenHistory, handleCloseHistory, handleLoadHistory,
-        handleRetentionChange, handleOpenPreferences, handleClosePreferences, handleOpenApiKeyDialog, handleCloseApiKeyDialog,
-        handleSavePreference, handleTogglePreferenceIncognito,
-    };
+    return useMemo(() => ({
+        conversation,
+        composer: composerContext,
+        history: historyContext,
+        settings,
+    }), [composerContext, conversation, historyContext, settings]);
 }

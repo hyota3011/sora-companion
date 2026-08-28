@@ -6,7 +6,7 @@ This file provides guidance to Codex when working with code in this repository.
 
 ### State Management
 
-All chat, global-preference, and top-level dialog visibility state lives in `src/hooks/useChat.js` and is distributed via React Context (`src/context/ChatContext.jsx`). Components consume state through `useChatContext()` — never pass chat state as props. API-key values are intentionally local to `ApiKeyDialog` and never enter context. `choosenModelRef` is a `useRef` (not state) so model switches don't trigger re-renders.
+`src/hooks/useChat.js` composes four domain hooks: `useChatSession` for messages, provider selection, streaming, and compaction; `useChatComposer` for drafts and attachments; `useChatHistory` for IndexedDB history; and `useChatSettings` for preferences plus top-level dialog visibility. `src/context/ChatContext.jsx` distributes their memoized slices through `useConversationContext()`, `useComposerContext()`, `useHistoryContext()`, and `useSettingsContext()`; components consume only the slices they need and never receive chat state as props. API-key values are intentionally local to `ApiKeyDialog` and never enter context. `choosenModelRef` is a `useRef` (not state) so model switches don't trigger re-renders.
 
 ### Provider / Profile System
 
@@ -32,7 +32,7 @@ Images are read as data URLs (`FileReader`), validated by loading into an `Image
 
 ### Browser Tab Attachments
 
-`src/api/tabCapture.js` queries all Chrome windows and uses `chrome.scripting.executeScript()` to capture a selected page's rendered text. `useChat` stores selected tabs as `{ id, title, url, content }` in `attachedTabs`; on send, each tab is retained on the user message and `buildApiMessages()` appends its title, URL, and captured text to the provider-bound user content. The composer and message bubble intentionally render only tab-title chips. Tab capture requires the extension's `tabs`, `scripting`, and `<all_urls>` permissions; non-HTTP(S), discarded, restricted, or injection-failed tabs are unavailable.
+`src/api/tabCapture.js` queries all Chrome windows and uses `chrome.scripting.executeScript()` to capture a selected page's rendered text. `useChatComposer` stores selected tabs as `{ id, title, url, content }` in `attachedTabs`; on send, each tab is retained on the user message and `buildApiMessages()` appends its title, URL, and captured text to the provider-bound user content. The composer and message bubble intentionally render only tab-title chips. Tab capture requires the extension's `tabs`, `scripting`, and `<all_urls>` permissions; non-HTTP(S), discarded, restricted, or injection-failed tabs are unavailable.
 
 ### Slash Commands
 
@@ -43,7 +43,7 @@ Typing `/` opens a keyboard-accessible composer menu. `/tabs` opens the multi-se
 Typing `/compact` and pressing Enter (or clicking Send) triggers conversation compaction:
 
 1. `handleSend()` in `useChat.js` intercepts the literal string `/compact` before normal send logic.
-2. `handleCompact()` streams a LLM-generated summary of the full `messages[]` history (no context-window slicing — everything is sent).
+2. `handleCompact()` in `useChatSession` streams a LLM-generated summary of the full `messages[]` history (no context-window slicing — everything is sent).
 3. On success: `compactMemory` state is set to the summary text, `messages[]` is cleared, and `isFirstMessage` stays `false` so the chat view remains visible.
 4. On subsequent sends: `buildApiMessages()` includes compact memory in a provider-neutral system message, combined with the global user preference only when preference Incognito is off.
 5. `handleNewChat()` clears `compactMemory`.
@@ -54,7 +54,7 @@ Typing `/compact` and pressing Enter (or clicking Send) triggers conversation co
 
 ### User Preferences
 
-The More menu in `Header` opens `PreferencesDialog`, where the textarea draft remains local until Save succeeds and is capped at 4,000 visible characters. The committed `userPreference` and persistent `preferenceIncognitoEnabled` switch are application-wide IndexedDB settings, not part of a chat record. `buildApiMessages()` places the preference in system context before context-window-limited conversation messages only while Incognito is off; Incognito leaves compact memory and conversation context unchanged. Normal sends and regenerated responses use the current setting across profiles and resumed chats. `/compact` does not use the preference for its internal summary request.
+The More menu in `Header` opens `PreferencesDialog`, where the textarea draft remains local until Save succeeds and is capped at 4,000 visible characters. `useChatSettings` owns the committed `userPreference`, persistent `preferenceIncognitoEnabled` switch, and preference/API-key dialog visibility; these are application-wide IndexedDB settings, not part of a chat record. `buildApiMessages()` places the preference in system context before context-window-limited conversation messages only while Incognito is off; Incognito leaves compact memory and conversation context unchanged. Normal sends and regenerated responses use the current setting across profiles and resumed chats. `/compact` does not use the preference for its internal summary request.
 
 ## Adding a New Provider
 

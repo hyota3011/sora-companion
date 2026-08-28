@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { USER_PREFERENCE_MAX_LENGTH } from "../config/preferences";
-import { useChatContext } from "../context/ChatContext";
+import { useSettingsContext } from "../context/ChatContext";
 
 const FOCUSABLE_SELECTOR = [
     "button:not([disabled])",
@@ -25,7 +25,7 @@ export default function PreferencesDialog() {
         preferenceError,
         handleClosePreferences,
         handleSavePreference,
-    } = useChatContext();
+    } = useSettingsContext();
     const [draft, setDraft] = useState(userPreference);
     const dialogRef = useRef(null);
     const isPreferenceUnavailable = isPreferenceLoading || Boolean(preferenceLoadError);

@@ -8,7 +8,7 @@ import {
 import sendIconImg from "../../static/images/SendIcon.png";
 import imageMenuIcon from "../assets/image-icon.svg";
 import { getDefaultModel, getModels } from "../config/models";
-import { useChatContext } from "../context/ChatContext";
+import { useComposerContext, useConversationContext, useSettingsContext } from "../context/ChatContext";
 import { captureBrowserTab, listBrowserTabs } from "../api/tabCapture";
 
 const COMMANDS = [
@@ -83,7 +83,7 @@ const TabPicker = memo(function TabPicker({ selectedTabs, onConfirm, onClose }) 
  * Isolated to prevent re-rendering the whole input area when toggled.
  */
 const ModelSelector = memo(() => {
-    const { choosenModelRef } = useChatContext();
+    const { choosenModelRef } = useConversationContext();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [selectedModel, setSelectedModel] = useState(() => getDefaultModel()?.id);
     const menuRef = useRef(null);
@@ -145,7 +145,8 @@ const ModelSelector = memo(() => {
 });
 
 const AttachmentMenu = memo(() => {
-    const { handleAddImageFiles, isStreaming } = useChatContext();
+    const { handleAddImageFiles } = useComposerContext();
+    const { isStreaming } = useConversationContext();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -210,7 +211,7 @@ const AttachmentMenu = memo(() => {
 /**
  * The main input area for composing and sending messages.
  * Includes the textarea, attachment buttons, and the model selector.
- * Consumes data from ChatContext to avoid prop drilling.
+ * Consumes composer, conversation, and settings contexts to avoid prop drilling.
  */
 const ChatInput = memo(() => {
     const [isDraggingImage, setIsDraggingImage] = useState(false);
@@ -224,16 +225,18 @@ const ChatInput = memo(() => {
         handleInput,
         handleKeyDown,
         handleSend,
-        handleCompact,
         handleAddImageFiles,
         handleRemoveImage,
         handleAddTabs,
         handleRemoveTab,
-        isStreaming,
-        isPreferenceLoading,
         textareaRef,
+    } = useComposerContext();
+    const {
+        handleCompact,
+        isStreaming,
         activeProfile
-    } = useChatContext();
+    } = useConversationContext();
+    const { isPreferenceLoading } = useSettingsContext();
 
     const providerName = activeProfile?.name;
     const dragDepthRef = useRef(0);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { deleteApiKey, hasApiKey, saveApiKey } from "../storage/apiKeys";
-import { useChatContext } from "../context/ChatContext";
+import { useConversationContext, useSettingsContext } from "../context/ChatContext";
 
 const FOCUSABLE_SELECTOR = [
     "button:not([disabled])",
@@ -16,7 +16,8 @@ const FOCUSABLE_SELECTOR = [
  * @returns {import("react").ReactElement|null} The API-key management dialog.
  */
 export default function ApiKeyDialog() {
-    const { activeProfile, handleCloseApiKeyDialog } = useChatContext();
+    const { activeProfile } = useConversationContext();
+    const { handleCloseApiKeyDialog } = useSettingsContext();
     const [draft, setDraft] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);

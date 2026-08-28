@@ -1,6 +1,5 @@
 export const provider = {
     OPENAI: "openai",
-    //GEMINI: "gemini",
     CLAUDE: "claude",
     GROK: "grok"
 };
@@ -12,12 +11,6 @@ export const defaultProfiles = [
         endpoint: "https://api.openai.com/v1/chat/completions",
         contextMessageCount: 20,
     },
-    // {
-    //     id: provider.GEMINI,
-    //     name: "Gemini",
-    //     endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/",
-    //     contextMessageCount: 20,
-    // },
     {
         id: provider.GROK,
         name: "Grok",

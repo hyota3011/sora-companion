@@ -11,7 +11,7 @@ import {
     RefreshIcon,
     EditIcon
 } from "./icons";
-import { useChatContext } from "../context/ChatContext";
+import { useConversationContext, useSettingsContext } from "../context/ChatContext";
 
 /**
  * A toolbar of actionable buttons (Like, Dislike, Copy, etc.) for assistant messages.
@@ -24,8 +24,8 @@ export function BotActionButtons({ message }) {
         handleRefreshLastResponse,
         handleEditLastUserMessage,
         isStreaming,
-        isPreferenceLoading
-    } = useChatContext();
+    } = useConversationContext();
+    const { isPreferenceLoading } = useSettingsContext();
 
     const text = message.text;
 

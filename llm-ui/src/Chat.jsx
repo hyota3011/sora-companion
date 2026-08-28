@@ -1,4 +1,4 @@
-import { ChatProvider, useChatContext } from "./context/ChatContext";
+import { ChatProvider, useConversationContext, useSettingsContext } from "./context/ChatContext";
 import Header from "./components/Header";
 import InitialView from "./components/InitialView";
 import MessageList from "./components/MessageList";
@@ -23,11 +23,12 @@ export default function Chat() {
 
 /**
  * The actual layout of the chat interface.
- * Consumes the ChatContext to determine what to render.
+ * Consumes conversation and settings contexts to determine what to render.
  * @returns {import("react").ReactElement} The active chat layout and overlays.
  */
 function ChatContent() {
-    const { activeProfile, isFirstMessage, isPreferencesOpen, isApiKeyDialogOpen, userPreference } = useChatContext();
+    const { activeProfile, isFirstMessage } = useConversationContext();
+    const { isPreferencesOpen, isApiKeyDialogOpen, userPreference } = useSettingsContext();
     const isModalOpen = isPreferencesOpen || isApiKeyDialogOpen;
 
     return (

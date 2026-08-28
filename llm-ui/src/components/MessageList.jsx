@@ -1,9 +1,9 @@
 import { memo } from 'react';
 import MessageItem from "./MessageItem";
-import { useChatContext } from "../context/ChatContext";
+import { useConversationContext } from "../context/ChatContext";
 
 const CompactBanner = memo(() => {
-    const { compactMemory } = useChatContext();
+    const { compactMemory } = useConversationContext();
     if (!compactMemory) return null;
     return (
         <div className="compact-banner">
@@ -17,7 +17,7 @@ const CompactBanner = memo(() => {
  * Prevents unnecessary re-renders of the entire history during streaming.
  */
 const StaticMessageList = memo(() => {
-    const { messages } = useChatContext();
+    const { messages } = useConversationContext();
     return (
         <>
             {messages.map((msg, index) => (
@@ -30,10 +30,10 @@ const StaticMessageList = memo(() => {
 /**
  * Renders the full conversation view, including the static history
  * and the currently streaming message (if any).
- * Consumes data from ChatContext to avoid prop drilling.
+ * Consumes conversation data to avoid prop drilling.
  */
 export default function MessageList() {
-    const { streamingMessage, messagesEndRef, activeProfile } = useChatContext();
+    const { streamingMessage, messagesEndRef, activeProfile } = useConversationContext();
     const providerName = activeProfile?.name;
 
     return (
