@@ -16,10 +16,10 @@ npm run dev        # start Vite dev server (hot reload)
 npm run build      # development build to dist/
 npm run build:prod # production build to dist/ with client-secret guard
 npm run lint       # run ESLint
+npm test           # run the Vitest regression suite
+npm run test:watch # run Vitest in watch mode
 npm run preview    # preview the production build locally
 ```
-
-There are no tests configured in this project.
 
 ## Browser Tab Context
 
@@ -42,6 +42,8 @@ Chat history is local to the browser profile and is stored in IndexedDB by `llm-
 The header's More menu opens a left-side History drawer. Selecting an entry loads it into the regular editable chat flow and refreshes its `updatedAt`; continuing the conversation updates that same record. Titles use the latest user text (with a date/time fallback for textless chats). Saved chats are provider/model agnostic: a resumed chat uses the provider and model currently selected in the UI.
 
 Retention defaults to 30 days and can be changed in History to 7, 30, 90 days, or Never. Expiration is based on `updatedAt` and is cleaned up on app startup, when History opens, and after a retention change. Cleanup is opportunistic while the UI is open; no background alarm is used.
+
+History supports checkbox selection, a tri-state Select all control, and immediate bulk deletion without a confirmation step or undo. `deleteChats()` removes only records from the `chats` store in one transaction; retention, preferences, and API keys are unaffected. Deletion is unavailable while streaming or another history operation is running. Deleting the active saved chat leaves its messages and composer draft visible but detaches its saved ID, so the next normal send creates a new history record. `useChatHistory` serializes chat-store writes and suppresses pending autosaves for deleted IDs so a deleted chat cannot be recreated by a stale save.
 
 ## User Preferences
 

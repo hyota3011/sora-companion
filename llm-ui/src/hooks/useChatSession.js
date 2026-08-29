@@ -181,6 +181,16 @@ export function useChatSession({
     }, []);
 
     /**
+     * Keeps the current conversation visible while removing its history identity.
+     * The next normal send creates a new saved-chat record for the conversation.
+     * @returns {void}
+     */
+    const detachActiveChat = useCallback(() => {
+        setActiveChatId(null);
+        chatMetaRef.current = null;
+    }, []);
+
+    /**
      * Restores a persisted chat into the active conversation state.
      * @param {Object} chat - The persisted chat record to restore.
      * @returns {void}
@@ -210,6 +220,7 @@ export function useChatSession({
         handleRefreshLastResponse,
         handleEditLastUserMessage,
         resetSession,
+        detachActiveChat,
         restoreSession,
-    }), [activeChatId, activeProfile, compactMemory, handleCompact, handleEditLastUserMessage, handleProfileChange, handleRefreshLastResponse, isFirstMessage, isStreaming, messages, resetSession, restoreSession, sendMessage, streamingMessage]);
+    }), [activeChatId, activeProfile, compactMemory, detachActiveChat, handleCompact, handleEditLastUserMessage, handleProfileChange, handleRefreshLastResponse, isFirstMessage, isStreaming, messages, resetSession, restoreSession, sendMessage, streamingMessage]);
 }

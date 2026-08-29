@@ -37,6 +37,7 @@ export function useChat() {
         chatMetaRef: session.chatMetaRef,
         isStreaming: session.isStreaming,
         restoreChat,
+        detachActiveChat: session.detachActiveChat,
     });
     const { persistCurrentChat } = history;
 

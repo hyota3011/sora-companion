@@ -85,6 +85,31 @@ export function saveChat(chat) {
     return runTransaction(CHATS_STORE, "readwrite", (store) => store.put(chat));
 }
 
+/**
+ * Removes duplicate or invalid identifiers before a bulk history operation.
+ * @param {Array<unknown>} chatIds - Candidate saved-chat identifiers.
+ * @returns {Array<string>} Unique non-empty chat identifiers.
+ */
+function normalizeChatIds(chatIds) {
+    return [...new Set((chatIds || []).filter((chatId) => (
+        typeof chatId === "string" && chatId.length > 0
+    )))];
+}
+
+/**
+ * Deletes saved chat records in one IndexedDB transaction.
+ * @param {Array<string>} chatIds - Saved-chat identifiers to delete.
+ * @returns {Promise<void>} Resolves after the deletion transaction commits.
+ */
+export async function deleteChats(chatIds) {
+    const normalizedChatIds = normalizeChatIds(chatIds);
+    if (!normalizedChatIds.length) return;
+
+    await runTransaction(CHATS_STORE, "readwrite", (store) => {
+        normalizedChatIds.forEach((chatId) => store.delete(chatId));
+    });
+}
+
 export async function getRetentionDays() {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {

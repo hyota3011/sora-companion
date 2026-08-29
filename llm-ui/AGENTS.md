@@ -8,6 +8,10 @@ This file provides guidance to Codex when working with code in this repository.
 
 `src/hooks/useChat.js` composes four domain hooks: `useChatSession` for messages, provider selection, streaming, and compaction; `useChatComposer` for drafts and attachments; `useChatHistory` for IndexedDB history; and `useChatSettings` for preferences plus top-level dialog visibility. `src/context/ChatContext.jsx` distributes their memoized slices through `useConversationContext()`, `useComposerContext()`, `useHistoryContext()`, and `useSettingsContext()`; components consume only the slices they need and never receive chat state as props. API-key values are intentionally local to `ApiKeyDialog` and never enter context. `choosenModelRef` is a `useRef` (not state) so model switches don't trigger re-renders.
 
+### Chat History
+
+`useChatHistory` persists committed chats after a debounce and serializes all `chats`-store writes. Its delete flow tombstones target IDs, cancels pending autosave, and queues the IndexedDB transaction after earlier writes, preventing a stale save from recreating a deleted chat. `HistorySidebar` owns its checkbox selection locally: each row has a selection checkbox and separate load button; Select all covers every loaded row and Delete selected acts immediately without a confirmation dialog. Deletion is blocked while streaming, loading, or mutating history. If the active saved chat is deleted, `useChatSession.detachActiveChat()` clears only its saved ID and metadata; the conversation and composer stay visible, and the next normal send starts a new saved record.
+
 ### Provider / Profile System
 
 - **Profiles** (`src/config/profiles.js`): Each LLM provider is a "profile" object `{ id, name, endpoint, contextMessageCount, maxTokens? }`. The active profile is persisted to `localStorage`.

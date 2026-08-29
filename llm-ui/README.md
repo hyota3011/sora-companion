@@ -2,6 +2,13 @@
 
 A browser-based chat interface for working with multiple LLM providers from one UI. The app supports streaming responses, provider/model switching, API key storage, and image attachments in the composer.
 
+## Commands
+
+```bash
+npm test           # run the Vitest regression suite
+npm run test:watch # run tests while developing
+```
+
 ## What matters most
 
 If you only read one section, read this one:
@@ -28,6 +35,7 @@ If you only read one section, read this one:
 - **Message Editing**: Restores the last user message (including images) to the composer for quick modification
 - **Response Feedback**: Toggleable Like/Dislike buttons for rating assistant output
 - **Copy & Share**: Easy one-click copying of assistant messages to the clipboard
+- **Saved Chat Controls**: Select individual chats or all saved chats and delete them from local history
 
 ## API key security
 
@@ -45,6 +53,7 @@ Do not put provider credentials in Vite `VITE_*` variables: they are bundled int
 - `MessageItem.jsx`: renders each message bubble; assistant messages support markdown, code blocks, and an action toolbar (Refresh, Edit, Feedback, Copy/Share); user messages can also render sent images
 - `ChatInput.jsx`: chat composer with textarea, attachment menu, drag-and-drop support, image previews, and model selector
 - `ApiKeyDialog.jsx`: accessible masked dialog for saving, replacing, and deleting the active provider key
+- `HistorySidebar.jsx`: resume saved chats, manage retention, and select/delete saved history records
 
 ### `src/context/`
 
@@ -53,6 +62,7 @@ Do not put provider credentials in Vite `VITE_*` variables: they are bundled int
 ### `src/hooks/`
 
 - `useChat.js`: the core workflow for message history, image attachment state, validation, streaming, and context window construction. Now includes handlers for message regeneration, editing history, and feedback toggling.
+- `useChatHistory.js`: persists local chats, applies retention, and coordinates deletion without letting delayed autosaves recreate removed records.
 
 ### `src/api/`
 
@@ -63,7 +73,7 @@ Do not put provider credentials in Vite `VITE_*` variables: they are bundled int
 ### `src/storage/`
 
 - `apiKeys.js`: IndexedDB storage utilities for per-provider API keys
-- `chatHistory.js`: IndexedDB storage for chats, retention, and user preferences
+- `chatHistory.js`: IndexedDB storage for chats, retention, user preferences, and atomic bulk chat deletion
 
 ### `src/config/`
 
