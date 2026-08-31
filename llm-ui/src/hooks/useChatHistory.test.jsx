@@ -26,7 +26,7 @@ afterEach(async () => {
 });
 
 describe("useChatHistory deletion", () => {
-    it("deletes the active record without recreating it and detaches the session", async () => {
+    it("deletes the active record without recreating it and clears the active session", async () => {
         const activeChat = {
             id: "active-chat",
             title: "Active chat",
@@ -36,7 +36,7 @@ describe("useChatHistory deletion", () => {
             updatedAt: 1,
         };
         const chatMetaRef = { current: { createdAt: 1, title: "Active chat" } };
-        const detachActiveChat = vi.fn();
+        const clearActiveChat = vi.fn();
         await saveChat(activeChat);
 
         const { result, unmount } = renderHook(() => useChatHistory({
@@ -46,7 +46,7 @@ describe("useChatHistory deletion", () => {
             chatMetaRef,
             isStreaming: false,
             restoreChat: vi.fn(),
-            detachActiveChat,
+            clearActiveChat,
         }));
 
         await waitFor(() => expect(result.current.isHistoryLoading).toBe(false));
@@ -57,7 +57,7 @@ describe("useChatHistory deletion", () => {
         });
 
         expect(didDelete).toBe(true);
-        expect(detachActiveChat).toHaveBeenCalledOnce();
+        expect(clearActiveChat).toHaveBeenCalledOnce();
         expect(await getChat("active-chat")).toBeNull();
 
         await new Promise((resolve) => window.setTimeout(resolve, 300));

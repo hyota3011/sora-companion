@@ -7,12 +7,13 @@ This file provides guidance to Codex when working with code in this repository.
 Every provider file must export a single async generator:
 
 ```js
-export async function* streamChat(messages, model, profile) { ... }
+export async function* streamChat(messages, model, profile, { signal } = {}) { ... }
 ```
 
 - `messages` — array of `{ role, content, images[] }` already trimmed to the context window
 - `model` — the raw API model string (the `val` field from the model config)
 - `profile` — the active profile object; use `profile.endpoint` for the URL and call `getApiKey(profile.id)` from `src/storage/apiKeys.js` immediately before the request
+- `signal` — optional `AbortSignal`; pass it to `fetch` so a discarded stream stops at the network boundary
 - Yield plain text strings (deltas only, no metadata)
 - Throw a plain, non-secret-bearing `Error` on missing keys, non-200 responses, or stream-level errors — the caller renders `error.message` directly to the user
 

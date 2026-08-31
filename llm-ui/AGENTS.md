@@ -10,7 +10,7 @@ This file provides guidance to Codex when working with code in this repository.
 
 ### Chat History
 
-`useChatHistory` persists committed chats after a debounce and serializes all `chats`-store writes. Its delete flow tombstones target IDs, cancels pending autosave, and queues the IndexedDB transaction after earlier writes, preventing a stale save from recreating a deleted chat. `HistorySidebar` owns its checkbox selection locally: each row has a selection checkbox and separate load button; Select all covers every loaded row and Delete selected acts immediately without a confirmation dialog. Deletion is blocked while streaming, loading, or mutating history. If the active saved chat is deleted, `useChatSession.detachActiveChat()` clears only its saved ID and metadata; the conversation and composer stay visible, and the next normal send starts a new saved record.
+`useChatHistory` persists committed chats after a debounce and serializes all `chats`-store writes. Its delete flow writes a durable tombstone alongside deletion, cancels pending autosave, and queues the IndexedDB transaction after earlier writes, preventing stale saves from recreating a deleted chat even from another open side panel. `HistorySidebar` owns its checkbox selection locally: each row has a selection checkbox and separate load button; Select all covers every loaded row and Delete selected acts immediately without a confirmation dialog. Deletion is blocked while streaming, loading, or mutating history. If the active saved chat is deleted, `useChat` resets its session and composer, clearing the transcript rather than detaching it. Deletion is logical IndexedDB record removal, not forensic secure erasure of browser-profile storage or backups.
 
 ### Provider / Profile System
 
@@ -21,6 +21,8 @@ This file provides guidance to Codex when working with code in this repository.
 ### Streaming Render Pattern
 
 `useChat` holds two parallel pieces of state: `messages[]` (committed history) and `streamingMessage` (in-flight assistant turn). `MessageList` renders these as two separate children — `StaticMessageList` (memoized, renders `messages[]`) and a bare `<MessageItem>` for `streamingMessage`. Do not collapse them into a single list; the split is what prevents history from re-rendering on every streamed delta.
+
+`useChatSession` creates one `AbortController`-backed request token at a time. Starting a new chat or restoring a saved chat aborts the active fetch and invalidates its session generation. Provider calls receive the token signal, and every delta, completed response, error, and compaction result must confirm that its token is still current before changing state. A cancelled request is silent and its partial text is discarded.
 
 ### API Key Storage
 
@@ -33,6 +35,8 @@ The root `manifest.json` side-panel package is canonical. `vite.config.js` retai
 ### Image Attachments
 
 Images are read as data URLs (`FileReader`), validated by loading into an `Image` element, then stored as `{ id, name, mimeType, dataUrl, size }`. `src/api/imageMessages.js` converts this to provider format before each API call: `image_url` objects for OpenAI/Grok, `base64` source blocks for Claude.
+
+Assistant Markdown is rendered by `src/components/AssistantMarkdown.jsx`. Markdown images are always replaced by an inert “Image blocked” notice and raw HTML is not enabled. Markdown links are limited to absolute HTTP(S) destinations and open with `noopener`, `noreferrer`, and no referrer. The extension CSP permits only `self` and `data:` images; user image attachments remain data URLs. Tab picker favicons are intentionally replaced with local placeholders.
 
 ### Browser Tab Attachments
 

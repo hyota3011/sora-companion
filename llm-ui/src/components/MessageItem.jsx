@@ -1,7 +1,3 @@
-import remarkGfm from "remark-gfm";
-import ReactMarkdown from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { memo } from "react";
 
 
@@ -12,6 +8,7 @@ import {
     EditIcon
 } from "./icons";
 import { useConversationContext, useSettingsContext } from "../context/ChatContext";
+import AssistantMarkdown from "./AssistantMarkdown";
 
 /**
  * A toolbar of actionable buttons (Like, Dislike, Copy, etc.) for assistant messages.
@@ -85,28 +82,7 @@ const MessageItem = memo(function MessageItem({ message }) {
                             Thinking<span className="flicker-dots"></span>
                         </div>
                     ) : (
-                        <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                                code(props) {
-                                    const { children, className, ...rest } = props;
-                                    const match = /language-(\w+)/.exec(className || "");
-                                    return match ? (
-                                        <SyntaxHighlighter
-                                            {...rest}
-                                            PreTag="div"
-                                            children={String(children).replace(/\n$/, "")}
-                                            language={match[1]}
-                                            style={oneDark}
-                                        />
-                                    ) : (
-                                        <code {...rest} className="bg-gray-200 text-red-600 px-1 py-0.5 rounded font-mono text-sm">
-                                            {children}
-                                        </code>
-                                    );
-                                }
-                            }}
-                        >{message.text}</ReactMarkdown>
+                        <AssistantMarkdown text={message.text} />
                     )
                 ) : (
                     <>

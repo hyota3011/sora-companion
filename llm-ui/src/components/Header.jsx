@@ -74,6 +74,7 @@ export default function Header({ profiles }) {
     const {
         activeProfile,
         handleNewChat,
+        isStreaming,
     } = useConversationContext();
     const { handleOpenHistory } = useHistoryContext();
     const {
@@ -115,7 +116,7 @@ export default function Header({ profiles }) {
     return (
         <header className="header">
             <div className="header-left">
-                <button className="icon-btn" title="New Chat" onClick={handleNewChat}>
+                <button className="icon-btn" title={isStreaming ? "Cancel response and start new chat" : "New Chat"} aria-label={isStreaming ? "Cancel response and start new chat" : "New Chat"} onClick={handleNewChat}>
                     <EditIcon />
                 </button>
 

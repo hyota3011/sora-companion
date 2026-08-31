@@ -16,7 +16,7 @@ const EXTENSION_PAGE_CONTENT_SECURITY_POLICY = [
     "script-src 'self'",
     "object-src 'none'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: chrome: http: https:",
+    "img-src 'self' data:",
     "font-src 'self'",
     "connect-src https://api.openai.com https://api.x.ai https://api.anthropic.com",
     "frame-src 'none'",

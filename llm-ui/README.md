@@ -22,6 +22,7 @@ If you only read one section, read this one:
 ## Current user-facing features
 
 - Text chat with streaming assistant responses
+- Starting a new chat cancels and discards an in-flight response while preserving already committed history
 - Provider switching and model switching
 - Persistent per-provider API key management through a masked dialog
 - Image upload from file picker
@@ -36,6 +37,7 @@ If you only read one section, read this one:
 - **Response Feedback**: Toggleable Like/Dislike buttons for rating assistant output
 - **Copy & Share**: Easy one-click copying of assistant messages to the clipboard
 - **Saved Chat Controls**: Select individual chats or all saved chats and delete them from local history
+- Assistant Markdown images are blocked; uploaded user images remain local data attachments
 
 ## API key security
 

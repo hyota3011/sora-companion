@@ -9,21 +9,23 @@ import { provider } from "../config/profiles";
  *
  * @param {Array<{role: string, content: string}>} messages
  * @param {string} model
- * @param {Object} activeProfile - The selected profile object
+ * @param {Object} activeProfile - The selected profile object.
+ * @param {Object} [options] - Request controls.
+ * @param {AbortSignal} [options.signal] - Cancels the provider fetch and stream.
  * @returns {AsyncGenerator<string>}
  */
-export async function* streamChat(messages, model, activeProfile) {
+export async function* streamChat(messages, model, activeProfile, options = {}) {
     if (!activeProfile) throw new Error("No active profile selected");
 
     switch (activeProfile.id) {
         case provider.OPENAI:
-            yield* streamOpenAI(messages, model, activeProfile);
+            yield* streamOpenAI(messages, model, activeProfile, options);
             break;
         case provider.GROK:
-            yield* streamGrok(messages, model, activeProfile);
+            yield* streamGrok(messages, model, activeProfile, options);
             break;
         case provider.CLAUDE:
-            yield* streamClaude(messages, model, activeProfile);
+            yield* streamClaude(messages, model, activeProfile, options);
             break;
         case "gemini":
             throw new Error("Gemini stream handler not implemented yet.");

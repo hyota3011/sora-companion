@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
     deleteChats,
     getChat,
+    getRetentionDays,
     getUserPreference,
     listChats,
     saveChat,
+    saveRetentionDays,
     saveUserPreference,
 } from "./chatHistory.js";
 
@@ -70,5 +72,25 @@ describe("deleteChats", () => {
         await deleteChats(["", null, undefined]);
 
         expect(await getChat("kept")).toEqual(createSavedChat("kept", 1));
+    });
+
+    it("prevents another open instance from recreating a deleted chat ID", async () => {
+        await saveChat(createSavedChat("deleted", 1));
+
+        await deleteChats(["deleted"]);
+        const didSave = await saveChat(createSavedChat("deleted", 2));
+
+        expect(didSave).toBe(false);
+        expect(await getChat("deleted")).toBeNull();
+    });
+});
+
+describe("history retention", () => {
+    it("keeps Never as null after the setting is reloaded", async () => {
+        expect(await getRetentionDays()).toBe(30);
+
+        await saveRetentionDays(null);
+
+        expect(await getRetentionDays()).toBeNull();
     });
 });

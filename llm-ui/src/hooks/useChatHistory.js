@@ -20,7 +20,7 @@ import { getChatTitle, serializeMessages } from "../utils/chatMessages.js";
  * @param {import("react").MutableRefObject<Object|null>} options.chatMetaRef - The active chat metadata reference.
  * @param {boolean} options.isStreaming - Whether an assistant request is in progress.
  * @param {(chat: Object) => void} options.restoreChat - Restores a persisted chat into the active UI state.
- * @param {() => void} options.detachActiveChat - Keeps the active conversation visible without a saved-chat identity.
+ * @param {() => void} options.clearActiveChat - Clears the active transcript after its record is deleted.
  * @returns {Object} History state and actions.
  */
 export function useChatHistory({
@@ -30,7 +30,7 @@ export function useChatHistory({
     chatMetaRef,
     isStreaming,
     restoreChat,
-    detachActiveChat,
+    clearActiveChat,
 }) {
     const [history, setHistory] = useState([]);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -150,8 +150,7 @@ export function useChatHistory({
         try {
             const didSave = await enqueueHistoryMutation(async () => {
                 if (!force && deletedChatIdsRef.current.has(record.id)) return false;
-                await saveChat(record);
-                return true;
+                return saveChat(record);
             });
             if (!didSave) return false;
             chatMetaRef.current = { createdAt: record.createdAt, title };
@@ -231,6 +230,7 @@ export function useChatHistory({
 
     /**
      * Deletes selected saved chats while preventing their autosave records from being recreated.
+     * Deleting the active record also clears its transcript and composer state.
      * @param {Array<string>} chatIds - Saved-chat identifiers to delete.
      * @returns {Promise<boolean>} Whether the selected records were deleted.
      */
@@ -252,7 +252,7 @@ export function useChatHistory({
         try {
             await enqueueHistoryMutation(() => deleteChats(uniqueChatIds));
             setHistory((current) => current.filter((chat) => !deletedIds.has(chat.id)));
-            if (activeChatWasDeleted) detachActiveChat();
+            if (activeChatWasDeleted) clearActiveChat();
             setHistoryNotice(`${uniqueChatIds.length} chat${uniqueChatIds.length === 1 ? "" : "s"} deleted.`);
             return true;
         } catch (error) {
@@ -264,7 +264,7 @@ export function useChatHistory({
         } finally {
             setIsHistoryDeleting(false);
         }
-    }, [activeChatId, cancelAutosave, detachActiveChat, enqueueHistoryMutation, isHistoryDeleting, isHistoryLoading, isStreaming, persistCurrentChat]);
+    }, [activeChatId, cancelAutosave, clearActiveChat, enqueueHistoryMutation, isHistoryDeleting, isHistoryLoading, isStreaming, persistCurrentChat]);
 
     /**
      * Persists a new retention preference, removes expired records, and refreshes history.

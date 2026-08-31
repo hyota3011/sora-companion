@@ -64,7 +64,7 @@ const TabPicker = memo(function TabPicker({ selectedTabs, onConfirm, onClose }) 
                     {!isLoading && tabs.map((tab) => (
                         <button key={tab.id} className={`tab-list-item ${selectedIds.has(tab.id) ? "selected" : ""} ${!tab.available ? "unavailable" : ""}`} onClick={() => toggleTab(tab)} disabled={!tab.available || isCapturing}>
                             <span className="tab-checkbox" aria-hidden="true">{selectedIds.has(tab.id) ? "✓" : ""}</span>
-                            {tab.favIconUrl ? <img className="tab-favicon" src={tab.favIconUrl} alt="" /> : <span className="tab-favicon-placeholder" />}
+                            <span className="tab-favicon-placeholder" aria-hidden="true" />
                             <span className="tab-list-text"><strong>{tab.title}</strong><span>{tab.available ? tab.url : tab.unavailableReason}</span></span>
                         </button>
                     ))}

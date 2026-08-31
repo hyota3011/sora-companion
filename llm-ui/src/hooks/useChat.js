@@ -30,6 +30,15 @@ export function useChat() {
         clearComposer();
     }, [clearComposer, restoreSession]);
 
+    /**
+     * Clears the active transcript and draft after its saved-history record is deleted.
+     * @returns {void}
+     */
+    const clearDeletedActiveChat = useCallback(() => {
+        resetSession();
+        clearComposer({ resetTextarea: true });
+    }, [clearComposer, resetSession]);
+
     const history = useChatHistory({
         activeChatId: session.activeChatId,
         messages: session.messages,
@@ -37,7 +46,7 @@ export function useChat() {
         chatMetaRef: session.chatMetaRef,
         isStreaming: session.isStreaming,
         restoreChat,
-        detachActiveChat: session.detachActiveChat,
+        clearActiveChat: clearDeletedActiveChat,
     });
     const { persistCurrentChat } = history;
 
@@ -74,13 +83,15 @@ export function useChat() {
     }, [handleSend]);
 
     /**
-     * Saves the active conversation before clearing it and its composer draft.
+     * Persists committed turns, then cancels and discards any in-flight turn before
+     * clearing the active conversation and composer draft.
      * @returns {void}
      */
     const handleNewChat = useCallback(() => {
-        void persistCurrentChat();
+        const pendingSave = persistCurrentChat();
         resetSession();
         clearComposer();
+        void pendingSave;
     }, [clearComposer, persistCurrentChat, resetSession]);
 
     const conversation = useMemo(() => ({

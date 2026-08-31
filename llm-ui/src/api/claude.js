@@ -9,10 +9,12 @@ const ANTHROPIC_VERSION = "2023-06-01";
  *
  * @param {Array<{role: string, content: string}>} messages
  * @param {string} model
- * @param {Object} profile - The active provider profile configuration
+ * @param {Object} profile - The active provider profile configuration.
+ * @param {Object} [options] - Request controls.
+ * @param {AbortSignal} [options.signal] - Cancels the provider fetch and stream.
  * @returns {AsyncGenerator<string>}
  */
-export async function* streamChat(messages, model, profile) {
+export async function* streamChat(messages, model, profile, { signal } = {}) {
     const { endpoint, maxTokens = 4096 } = profile;
 
     const apiKey = await getApiKey(profile.id);
@@ -26,6 +28,7 @@ export async function* streamChat(messages, model, profile) {
 
     const response = await fetch(endpoint, {
         method: "POST",
+        signal,
         headers: {
             "Content-Type": "application/json",
             "x-api-key": apiKey,

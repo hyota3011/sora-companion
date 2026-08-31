@@ -1,6 +1,7 @@
 const DB_NAME = "sora-chat-history";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const CHATS_STORE = "chats";
+const DELETED_CHATS_STORE = "deletedChats";
 const SETTINGS_STORE = "settings";
 const RETENTION_KEY = "retentionDays";
 const USER_PREFERENCE_KEY = "userPreference";
@@ -23,6 +24,9 @@ function getDatabase() {
                 const chats = db.createObjectStore(CHATS_STORE, { keyPath: "id" });
                 chats.createIndex("updatedAt", "updatedAt");
             }
+            if (!db.objectStoreNames.contains(DELETED_CHATS_STORE)) {
+                db.createObjectStore(DELETED_CHATS_STORE, { keyPath: "id" });
+            }
             if (!db.objectStoreNames.contains(SETTINGS_STORE)) {
                 db.createObjectStore(SETTINGS_STORE, { keyPath: "key" });
             }
@@ -31,11 +35,19 @@ function getDatabase() {
     });
 }
 
-async function runTransaction(storeName, mode, operation) {
+/**
+ * Runs an IndexedDB operation against one or more stores and closes the database afterwards.
+ * @param {string|Array<string>} storeNames - Store names available to the operation.
+ * @param {IDBTransactionMode} mode - The transaction mode.
+ * @param {(...stores: Array<IDBObjectStore>) => unknown} operation - The work to run inside the transaction.
+ * @returns {Promise<unknown>} The operation return value after the transaction commits.
+ */
+async function runTransaction(storeNames, mode, operation) {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, mode);
-        const store = transaction.objectStore(storeName);
+        const names = Array.isArray(storeNames) ? storeNames : [storeNames];
+        const transaction = db.transaction(names, mode);
+        const stores = names.map((storeName) => transaction.objectStore(storeName));
         let result;
 
         transaction.onerror = () => reject(transaction.error || new Error("Unable to update chat history"));
@@ -43,7 +55,7 @@ async function runTransaction(storeName, mode, operation) {
         transaction.oncomplete = () => resolve(result);
 
         try {
-            result = operation(store);
+            result = operation(...stores);
         } catch (error) {
             transaction.abort();
             reject(error);
@@ -81,8 +93,23 @@ export async function getChat(id) {
     }).finally(() => db.close());
 }
 
-export function saveChat(chat) {
-    return runTransaction(CHATS_STORE, "readwrite", (store) => store.put(chat));
+/**
+ * Saves a chat unless its identifier has been durably deleted.
+ * @param {Object} chat - The chat record to persist.
+ * @param {string} chat.id - The unique saved-chat identifier.
+ * @returns {Promise<boolean>} Whether the chat record was written.
+ */
+export async function saveChat(chat) {
+    let didSave = false;
+    await runTransaction([CHATS_STORE, DELETED_CHATS_STORE], "readwrite", (chats, deletedChats) => {
+        const tombstoneRequest = deletedChats.get(chat.id);
+        tombstoneRequest.onsuccess = () => {
+            if (tombstoneRequest.result) return;
+            chats.put(chat);
+            didSave = true;
+        };
+    });
+    return didSave;
 }
 
 /**
@@ -105,17 +132,24 @@ export async function deleteChats(chatIds) {
     const normalizedChatIds = normalizeChatIds(chatIds);
     if (!normalizedChatIds.length) return;
 
-    await runTransaction(CHATS_STORE, "readwrite", (store) => {
-        normalizedChatIds.forEach((chatId) => store.delete(chatId));
+    await runTransaction([CHATS_STORE, DELETED_CHATS_STORE], "readwrite", (chats, deletedChats) => {
+        normalizedChatIds.forEach((chatId) => {
+            chats.delete(chatId);
+            deletedChats.put({ id: chatId, deletedAt: Date.now() });
+        });
     });
 }
 
+/**
+ * Reads the configured chat-history retention period.
+ * @returns {Promise<number|null>} The saved retention period, or 30 days when no setting exists.
+ */
 export async function getRetentionDays() {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {
         const request = db.transaction(SETTINGS_STORE, "readonly").objectStore(SETTINGS_STORE).get(RETENTION_KEY);
         request.onerror = () => reject(request.error || new Error("Unable to read history settings"));
-        request.onsuccess = () => resolve(request.result?.value ?? 30);
+        request.onsuccess = () => resolve(request.result ? request.result.value : 30);
     }).finally(() => db.close());
 }
 
