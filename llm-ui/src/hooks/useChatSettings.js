@@ -19,7 +19,7 @@ export function useChatSettings() {
     const [isPreferenceSaving, setIsPreferenceSaving] = useState(false);
     const [preferenceLoadError, setPreferenceLoadError] = useState("");
     const [preferenceError, setPreferenceError] = useState("");
-    const [isPreferenceIncognitoEnabled, setIsPreferenceIncognitoEnabled] = useState(false);
+    const [isPreferenceIncognitoEnabled, setIsPreferenceIncognitoEnabled] = useState(true);
     const [isPreferenceIncognitoSaving, setIsPreferenceIncognitoSaving] = useState(false);
     const [preferenceIncognitoError, setPreferenceIncognitoError] = useState("");
     const preferenceLoadIdRef = useRef(0);
