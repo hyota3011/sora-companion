@@ -2,29 +2,29 @@ import { SearchIcon, ZapIcon, GraduationCapIcon, BrainIcon } from "../components
 
 export const openai = [
     {
-        id: 'moon',
-        title: 'Moon',
-        tag: 'GPT-5.4 Luna',
-        val: 'gpt-5.6-luna',
-        desc: 'GPT-5.6 model optimized for cost-sensitive workloads',
+        id: 'luna',
+        title: 'luna',
+        tag: 'GPT-6 Luna',
+        val: 'gpt-6-luna',
+        desc: 'Our most efficient model for focused, high-volume tasks',
         default: true,
         icon: <ZapIcon />
     },
     {
-        id: 'earth',
-        title: 'Earth',
-        tag: 'GPT-5.6 Terra',
-        val: 'gpt-5.6-terra',
-        desc: 'GPT-5.6 model that balances intelligence and cost',
+        id: 'sol',
+        title: 'sol',
+        tag: 'GPT-6 Sol',
+        val: 'gpt-6-sol',
+        desc: 'Built to power complex coding and agentic workflows',
         default: false,
-        icon: <GraduationCapIcon />
+        icon: <SparkleIcon />
     },
     {
-        id: 'sun',
-        title: 'Sun',
-        tag: 'GPT-5.6 Sol',
-        val: 'gpt-5.6-sol',
-        desc: 'Frontier model for complex professional work',
+        id: 'Astra',
+        title: 'Astra',
+        tag: 'GPT-6 Astra',
+        val: 'gpt-6-astra',
+        desc: 'Our most capable model, built for the hardest end-to-end work',
         default: false,
         icon: <BrainIcon />
     }

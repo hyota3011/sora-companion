@@ -23,7 +23,7 @@ export const claude = [
         id: 'claude-opus',
         title: 'Opus',
         tag: 'Opus 4.8',
-        val: 'claude-opus-4-8',
+        val: 'claude-opus-5-5',
         desc: 'Most intelligent — excels at complex reasoning',
         default: false,
         icon: <BrainIcon />
