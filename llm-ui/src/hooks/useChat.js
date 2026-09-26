@@ -45,6 +45,8 @@ export function useChat() {
         compactMemory: session.compactMemory,
         chatMetaRef: session.chatMetaRef,
         isStreaming: session.isStreaming,
+        isPreferenceIncognitoEnabled: settings.isPreferenceIncognitoEnabled,
+        isPreferenceLoading: settings.isPreferenceLoading,
         restoreChat,
         clearActiveChat: clearDeletedActiveChat,
     });

@@ -64,7 +64,6 @@ const TabPicker = memo(function TabPicker({ selectedTabs, onConfirm, onClose }) 
                     {!isLoading && tabs.map((tab) => (
                         <button key={tab.id} className={`tab-list-item ${selectedIds.has(tab.id) ? "selected" : ""} ${!tab.available ? "unavailable" : ""}`} onClick={() => toggleTab(tab)} disabled={!tab.available || isCapturing}>
                             <span className="tab-checkbox" aria-hidden="true">{selectedIds.has(tab.id) ? "✓" : ""}</span>
-                            <span className="tab-favicon-placeholder" aria-hidden="true" />
                             <span className="tab-list-text"><strong>{tab.title}</strong><span>{tab.available ? tab.url : tab.unavailableReason}</span></span>
                         </button>
                     ))}
@@ -383,7 +382,7 @@ const ChatInput = memo(() => {
                 <textarea
                     ref={textareaRef}
                     id="chat-input"
-                    placeholder={`Message ${providerName || "AI"} or @ mention a tab`}
+                    placeholder={`Message ${providerName || "AI"} or / mention a tab`}
                     rows="1"
                     value={inputValue}
                     onChange={handleInput}

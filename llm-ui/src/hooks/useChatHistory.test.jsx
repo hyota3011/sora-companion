@@ -65,3 +65,83 @@ describe("useChatHistory deletion", () => {
         unmount();
     });
 });
+
+describe("useChatHistory while preference Incognito is enabled", () => {
+    /**
+     * Renders history persistence with Incognito writes suppressed.
+     * @param {Object} options - Hook option overrides.
+     * @returns {import("@testing-library/react").RenderHookResult} The rendered hook.
+     */
+    function renderIncognitoHistory(options = {}) {
+        return renderHook(() => useChatHistory({
+            activeChatId: "incognito-chat",
+            messages: [{ id: "message", text: "Private turn", sender: "user" }],
+            compactMemory: null,
+            chatMetaRef: { current: { createdAt: 1, title: "" } },
+            isStreaming: false,
+            isPreferenceIncognitoEnabled: true,
+            isPreferenceLoading: false,
+            restoreChat: vi.fn(),
+            clearActiveChat: vi.fn(),
+            ...options,
+        }));
+    }
+
+    it("does not autosave the active chat or rewrite a loaded chat", async () => {
+        const savedChat = {
+            id: "saved-chat",
+            title: "Saved chat",
+            messages: [{ id: "saved-message", text: "Earlier turn", sender: "user" }],
+            compactMemory: null,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        };
+        await saveChat(savedChat);
+        const restoreChat = vi.fn();
+        const { result, unmount } = renderIncognitoHistory({ restoreChat });
+
+        await waitFor(() => expect(result.current.isHistoryLoading).toBe(false));
+        await act(async () => {
+            await result.current.persistCurrentChat();
+        });
+        await new Promise((resolve) => window.setTimeout(resolve, 300));
+
+        expect(await getChat("incognito-chat")).toBeNull();
+        expect(await getChat("saved-chat")).toEqual(savedChat);
+
+        await act(async () => {
+            await result.current.handleLoadHistory("saved-chat");
+        });
+
+        expect(restoreChat).toHaveBeenCalledWith(savedChat);
+        expect((await getChat("saved-chat")).updatedAt).toBe(savedChat.updatedAt);
+
+        const { result: compactResult, unmount: unmountCompact } = renderIncognitoHistory({
+            compactMemory: "Private summary",
+            messages: [],
+        });
+        await waitFor(() => expect(compactResult.current.isHistoryLoading).toBe(false));
+        await act(async () => {
+            expect(await compactResult.current.persistCurrentChat()).toBe(false);
+        });
+        expect(await getChat("incognito-chat")).toBeNull();
+        unmountCompact();
+        unmount();
+    });
+
+    it("does not save while the Incognito setting is still loading", async () => {
+        const { result, unmount } = renderIncognitoHistory({
+            isPreferenceIncognitoEnabled: false,
+            isPreferenceLoading: true,
+        });
+
+        await waitFor(() => expect(result.current.isHistoryLoading).toBe(false));
+        await act(async () => {
+            expect(await result.current.persistCurrentChat()).toBe(false);
+        });
+        await new Promise((resolve) => window.setTimeout(resolve, 300));
+
+        expect(await getChat("incognito-chat")).toBeNull();
+        unmount();
+    });
+});

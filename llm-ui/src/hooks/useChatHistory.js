@@ -19,6 +19,8 @@ import { getChatTitle, serializeMessages } from "../utils/chatMessages.js";
  * @param {string|null} options.compactMemory - The current compacted conversation summary.
  * @param {import("react").MutableRefObject<Object|null>} options.chatMetaRef - The active chat metadata reference.
  * @param {boolean} options.isStreaming - Whether an assistant request is in progress.
+ * @param {boolean} options.isPreferenceIncognitoEnabled - Whether Incognito is omitting preference text and history writes.
+ * @param {boolean} options.isPreferenceLoading - Whether the Incognito setting is still being read.
  * @param {(chat: Object) => void} options.restoreChat - Restores a persisted chat into the active UI state.
  * @param {() => void} options.clearActiveChat - Clears the active transcript after its record is deleted.
  * @returns {Object} History state and actions.
@@ -29,6 +31,8 @@ export function useChatHistory({
     compactMemory,
     chatMetaRef,
     isStreaming,
+    isPreferenceIncognitoEnabled = false,
+    isPreferenceLoading = false,
     restoreChat,
     clearActiveChat,
 }) {
@@ -133,6 +137,7 @@ export function useChatHistory({
      * @returns {Promise<boolean>} Whether a chat record was saved.
      */
     const persistCurrentChat = useCallback(async ({ force = false } = {}) => {
+        if (isPreferenceLoading || isPreferenceIncognitoEnabled) return false;
         if (!activeChatId || (!messages.length && !compactMemory)) return false;
         if (!force && deletedChatIdsRef.current.has(activeChatId)) return false;
 
@@ -162,9 +167,13 @@ export function useChatHistory({
             setHistoryError("This chat could not be saved.");
             return false;
         }
-    }, [activeChatId, chatMetaRef, compactMemory, enqueueHistoryMutation, messages]);
+    }, [activeChatId, chatMetaRef, compactMemory, enqueueHistoryMutation, isPreferenceIncognitoEnabled, isPreferenceLoading, messages]);
 
     useEffect(() => {
+        if (isPreferenceLoading || isPreferenceIncognitoEnabled) {
+            cancelAutosave();
+            return undefined;
+        }
         if (!activeChatId || (!messages.length && !compactMemory) || deletedChatIdsRef.current.has(activeChatId)) {
             return undefined;
         }
@@ -179,7 +188,7 @@ export function useChatHistory({
         return () => {
             if (autosaveTimerRef.current === timer) cancelAutosave();
         };
-    }, [activeChatId, cancelAutosave, compactMemory, messages, persistCurrentChat]);
+    }, [activeChatId, cancelAutosave, compactMemory, isPreferenceIncognitoEnabled, isPreferenceLoading, messages, persistCurrentChat]);
 
     /**
      * Opens the history drawer and refreshes the saved records.
@@ -215,8 +224,10 @@ export function useChatHistory({
                 await refreshHistory();
                 return;
             }
-            const resumedChat = { ...chat, updatedAt: Date.now() };
-            await enqueueHistoryMutation(() => saveChat(resumedChat));
+            const resumedChat = isPreferenceIncognitoEnabled ? chat : { ...chat, updatedAt: Date.now() };
+            if (!isPreferenceIncognitoEnabled) {
+                await enqueueHistoryMutation(() => saveChat(resumedChat));
+            }
             restoreChat(chat);
             setHistory((current) => [resumedChat, ...current.filter((entry) => entry.id !== chat.id)]);
             setIsHistoryOpen(false);
@@ -226,7 +237,7 @@ export function useChatHistory({
         } finally {
             setIsHistoryLoading(false);
         }
-    }, [enqueueHistoryMutation, isHistoryDeleting, isHistoryLoading, isStreaming, persistCurrentChat, refreshHistory, restoreChat]);
+    }, [enqueueHistoryMutation, isHistoryDeleting, isHistoryLoading, isPreferenceIncognitoEnabled, isStreaming, persistCurrentChat, refreshHistory, restoreChat]);
 
     /**
      * Deletes selected saved chats while preventing their autosave records from being recreated.
