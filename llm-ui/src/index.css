@@ -451,6 +451,15 @@ button {
     width: 220px;
 }
 
+.reasoning-level-menu {
+    width: 140px;
+}
+
+.reasoning-level-item {
+    padding: 9px 11px;
+    text-align: left;
+}
+
 /* Global preferences dialog */
 .preferences-backdrop {
     position: fixed;

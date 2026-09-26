@@ -38,4 +38,23 @@ describe("provider request cancellation", () => {
 
         expect(fetchMock).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ signal: controller.signal }));
     });
+
+    it.each([
+        ["OpenAI", streamOpenAI, "openai"],
+        ["Grok", streamGrok, "grok"],
+        ["Claude", streamClaude, "claude"],
+    ])("includes %s reasoning effort for none and max", async (_, stream, id) => {
+        for (const reasoningLevel of ["none", "max"]) {
+            const fetchMock = vi.fn().mockResolvedValue({
+                json: vi.fn().mockResolvedValue({}),
+                ok: false,
+                status: 401,
+            });
+            vi.stubGlobal("fetch", fetchMock);
+
+            await expect(stream([], "model", createProfile(id), { reasoningLevel }).next()).rejects.toThrow("Invalid API Key");
+
+            expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ reasoning_effort: reasoningLevel });
+        }
+    });
 });

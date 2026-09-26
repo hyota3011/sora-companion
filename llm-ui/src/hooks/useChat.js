@@ -104,13 +104,14 @@ export function useChat() {
         activeProfile: session.activeProfile,
         compactMemory: session.compactMemory,
         choosenModelRef: session.choosenModelRef,
+        reasoningLevelRef: session.reasoningLevelRef,
         messagesEndRef: session.messagesEndRef,
         handleProfileChange: session.handleProfileChange,
         handleCompact: session.handleCompact,
         handleRefreshLastResponse: session.handleRefreshLastResponse,
         handleEditLastUserMessage: session.handleEditLastUserMessage,
         handleNewChat,
-    }), [handleNewChat, session.activeProfile, session.choosenModelRef, session.compactMemory, session.handleCompact, session.handleEditLastUserMessage, session.handleProfileChange, session.handleRefreshLastResponse, session.isFirstMessage, session.isStreaming, session.messages, session.messagesEndRef, session.streamingMessage]);
+    }), [handleNewChat, session.activeProfile, session.choosenModelRef, session.compactMemory, session.handleCompact, session.handleEditLastUserMessage, session.handleProfileChange, session.handleRefreshLastResponse, session.isFirstMessage, session.isStreaming, session.messages, session.messagesEndRef, session.reasoningLevelRef, session.streamingMessage]);
 
     const composerContext = useMemo(() => ({
         inputValue: composer.inputValue,

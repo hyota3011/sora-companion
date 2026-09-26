@@ -1,4 +1,4 @@
-import { SearchIcon, ZapIcon, GraduationCapIcon, BrainIcon } from "../components/icons";
+import { SearchIcon, SparkleIcon, ZapIcon, GraduationCapIcon, BrainIcon } from "../components/icons";
 
 export const openai = [
     {

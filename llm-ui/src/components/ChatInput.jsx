@@ -8,6 +8,7 @@ import {
 import sendIconImg from "../../static/images/SendIcon.png";
 import imageMenuIcon from "../assets/image-icon.svg";
 import { getDefaultModel, getModels } from "../config/models";
+import { reasoningLevels } from "../config/reasoningLevels";
 import { useComposerContext, useConversationContext, useSettingsContext } from "../context/ChatContext";
 import { captureBrowserTab, listBrowserTabs } from "../api/tabCapture";
 
@@ -138,6 +139,54 @@ const ModelSelector = memo(() => {
                                 </div>
                                 <span className="dropdown-item-desc">{model.desc}</span>
                             </div>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+});
+
+/**
+ * Selects the session-only reasoning effort included with provider requests.
+ * @returns {import("react").ReactElement} The reasoning effort dropdown.
+ */
+const ReasoningLevelSelector = memo(() => {
+    const { reasoningLevelRef } = useConversationContext();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [selectedLevel, setSelectedLevel] = useState(reasoningLevelRef.current);
+    const menuRef = useRef(null);
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (menuRef.current && !menuRef.current.contains(event.target)) setIsMenuOpen(false);
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const handleLevelSelect = (level) => {
+        setSelectedLevel(level);
+        reasoningLevelRef.current = level;
+        setIsMenuOpen(false);
+    };
+
+    const capitalizeFirstLetter = (str) => {
+        if (!str) return '';
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    return (
+        <div className="model-selector-container" ref={menuRef}>
+            <button className="outline-btn pill" title="Effort" onClick={() => setIsMenuOpen((open) => !open)}>
+                <span>{capitalizeFirstLetter(selectedLevel)}</span>
+                <ChevronDownIcon />
+            </button>
+            {isMenuOpen && (
+                <div className="dropdown-menu reasoning-level-menu">
+                    {reasoningLevels.map((level) => (
+                        <button key={level} className={`dropdown-item-title dropdown-item reasoning-level-item ${selectedLevel === level ? "active" : ""}`} onClick={() => handleLevelSelect(level)}>
+                            {capitalizeFirstLetter(level)}
                         </button>
                     ))}
                 </div>
@@ -408,6 +457,7 @@ const ChatInput = memo(() => {
                         <AttachmentMenu />
 
                         <ModelSelector key={activeProfile.id} />
+                        <ReasoningLevelSelector />
                     </div>
                     <div className="toolbar-right">
                         {inputValue.trim().length > 0 || attachedImages.length > 0 ? (

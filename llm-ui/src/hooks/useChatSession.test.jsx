@@ -143,4 +143,24 @@ describe("useChatSession cancellation", () => {
             await firstRequest;
         });
     });
+
+    it("snapshots the selected reasoning effort for a request", async () => {
+        const stream = createControlledStream();
+        mockStreamChat.mockReturnValue(stream);
+        const { result } = renderHook(() => useChatSession(createSessionOptions()));
+        result.current.reasoningLevelRef.current = "high";
+
+        let request;
+        act(() => {
+            request = result.current.sendMessage({ images: [], tabs: [], text: "Reason carefully" });
+        });
+
+        await waitFor(() => expect(mockStreamChat).toHaveBeenCalledOnce());
+        expect(mockStreamChat.mock.calls[0][3]).toMatchObject({ reasoningLevel: "high" });
+
+        await act(async () => {
+            stream.finish();
+            await request;
+        });
+    });
 });

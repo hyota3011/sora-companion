@@ -34,6 +34,7 @@ export function useChatSession({
     const [compactMemory, setCompactMemory] = useState(null);
     const [activeChatId, setActiveChatId] = useState(null);
     const choosenModelRef = useRef(getDefaultModel());
+    const reasoningLevelRef = useRef("none");
     const messagesEndRef = useRef(null);
     const chatMetaRef = useRef(null);
     const activeRequestRef = useRef(null);
@@ -93,6 +94,7 @@ export function useChatSession({
             controller: new AbortController(),
             profile: activeProfile,
             model: choosenModelRef.current.val,
+            reasoningLevel: reasoningLevelRef.current,
         };
         activeRequestRef.current = request;
         setIsStreaming(true);
@@ -113,7 +115,7 @@ export function useChatSession({
     const streamAssistantResponse = useCallback(async (apiMessages, request) => {
         try {
             let accumulated = "";
-            for await (const delta of streamChat(apiMessages, request.model, request.profile, { signal: request.controller.signal })) {
+            for await (const delta of streamChat(apiMessages, request.model, request.profile, { signal: request.controller.signal, reasoningLevel: request.reasoningLevel })) {
                 if (!isRequestCurrent(request)) return;
                 accumulated += delta;
                 setStreamingMessage({ text: accumulated, sender: "assistant", isStreaming: true });
@@ -160,7 +162,7 @@ export function useChatSession({
         return (async () => {
             try {
                 let summary = "";
-                for await (const delta of streamChat(compactApiMessages, request.model, request.profile, { signal: request.controller.signal })) {
+                for await (const delta of streamChat(compactApiMessages, request.model, request.profile, { signal: request.controller.signal, reasoningLevel: request.reasoningLevel })) {
                     if (!isRequestCurrent(request)) return;
                     summary += delta;
                     setStreamingMessage({ text: summary, sender: "assistant", isStreaming: true });
@@ -280,6 +282,7 @@ export function useChatSession({
         activeProfile,
         compactMemory,
         choosenModelRef,
+        reasoningLevelRef,
         messagesEndRef,
         activeChatId,
         chatMetaRef,

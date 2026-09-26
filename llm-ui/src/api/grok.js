@@ -1,5 +1,6 @@
 import { getApiKey } from "../storage/apiKeys";
 import { toOpenAICompatibleMessages } from "./imageMessages";
+import { reasoningEffortField } from "../config/reasoningLevels";
 /**
  * Sends a chat completion request to Grok and returns an async generator
  * that yields text content deltas as plain strings.
@@ -9,9 +10,10 @@ import { toOpenAICompatibleMessages } from "./imageMessages";
  * @param {Object} profile - The active provider profile configuration.
  * @param {Object} [options] - Request controls.
  * @param {AbortSignal} [options.signal] - Cancels the provider fetch and stream.
+ * @param {string} [options.reasoningLevel] - Session reasoning effort sent to the provider.
  * @returns {AsyncGenerator<string>}
  */
-export async function* streamChat(messages, model, profile, { signal } = {}) {
+export async function* streamChat(messages, model, profile, { signal, reasoningLevel } = {}) {
     const { endpoint } = profile;
 
     const apiKey = await getApiKey(profile.id);
@@ -31,6 +33,7 @@ export async function* streamChat(messages, model, profile, { signal } = {}) {
             model,
             messages: toOpenAICompatibleMessages(messages),
             stream: true,
+            ...reasoningEffortField(reasoningLevel),
         }),
     });
 

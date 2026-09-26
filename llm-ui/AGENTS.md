@@ -6,7 +6,7 @@ This file provides guidance to Codex when working with code in this repository.
 
 ### State Management
 
-`src/hooks/useChat.js` composes four domain hooks: `useChatSession` for messages, provider selection, streaming, and compaction; `useChatComposer` for drafts and attachments; `useChatHistory` for IndexedDB history; and `useChatSettings` for preferences plus top-level dialog visibility. `src/context/ChatContext.jsx` distributes their memoized slices through `useConversationContext()`, `useComposerContext()`, `useHistoryContext()`, and `useSettingsContext()`; components consume only the slices they need and never receive chat state as props. API-key values are intentionally local to `ApiKeyDialog` and never enter context. `choosenModelRef` is a `useRef` (not state) so model switches don't trigger re-renders.
+`src/hooks/useChat.js` composes four domain hooks: `useChatSession` for messages, provider selection, streaming, and compaction; `useChatComposer` for drafts and attachments; `useChatHistory` for IndexedDB history; and `useChatSettings` for preferences plus top-level dialog visibility. `src/context/ChatContext.jsx` distributes their memoized slices through `useConversationContext()`, `useComposerContext()`, `useHistoryContext()`, and `useSettingsContext()`; components consume only the slices they need and never receive chat state as props. API-key values are intentionally local to `ApiKeyDialog` and never enter context. `choosenModelRef` is a `useRef` (not state) so model switches don't trigger re-renders. `reasoningLevelRef` is a session-only `useRef`, initialized to `none`; every request token snapshots it and forwards it as provider reasoning effort.
 
 ### Chat History
 
