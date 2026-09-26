@@ -43,12 +43,15 @@ const TabPicker = memo(function TabPicker({ selectedTabs, onConfirm, onClose }) 
         const selected = tabs.filter((tab) => selectedIds.has(tab.id));
         setIsCapturing(true);
         setError("");
-        const results = await Promise.allSettled(selected.map(captureBrowserTab));
+        const results = await Promise.allSettled(selected.map((tab) => captureBrowserTab(tab)));
         const captured = results.filter((result) => result.status === "fulfilled").map((result) => result.value);
-        const failures = results.length - captured.length;
-        if (failures) setError(`${failures} selected tab${failures === 1 ? "" : "s"} could not be read.`);
-        onConfirm(captured);
-        if (!failures) onClose();
+        const failures = results.filter((result) => result.status === "rejected");
+        if (failures.length) {
+            const reason = failures[0].reason?.message || "This tab could not be read.";
+            setError(failures.length === 1 ? reason : `${failures.length} selected tabs could not be read. ${reason}`);
+        }
+        if (captured.length) onConfirm(captured);
+        if (!failures.length) onClose();
         setIsCapturing(false);
     };
 
@@ -337,7 +340,7 @@ const ChatInput = memo(() => {
             }
         }
     };
-
+    console.log(attachedTabs);
     return (
         <footer className="input-area">
             <div

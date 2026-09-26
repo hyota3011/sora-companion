@@ -82,7 +82,10 @@ export function useChatComposer() {
     const handleAddTabs = useCallback((tabs) => {
         setAttachedTabs((previous) => {
             const byId = new Map(previous.map((tab) => [tab.id, tab]));
-            tabs.forEach((tab) => byId.set(tab.id, tab));
+            tabs.forEach((tab) => {
+                if (tab?.id == null) return;
+                byId.set(tab.id, tab);
+            });
             return [...byId.values()];
         });
     }, []);
