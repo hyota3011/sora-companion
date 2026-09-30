@@ -1,6 +1,6 @@
 import { getApiKey } from "../storage/apiKeys";
 import { toClaudeMessages } from "./imageMessages";
-import { reasoningEffortField } from "../config/reasoningLevels";
+import { reasoningEffortOutputConfigField } from "../config/reasoningLevels";
 
 const ANTHROPIC_VERSION = "2023-06-01";
 
@@ -13,7 +13,7 @@ const ANTHROPIC_VERSION = "2023-06-01";
  * @param {Object} profile - The active provider profile configuration.
  * @param {Object} [options] - Request controls.
  * @param {AbortSignal} [options.signal] - Cancels the provider fetch and stream.
- * @param {string} [options.reasoningLevel] - Session reasoning effort sent to the provider.
+ * @param {string} [options.reasoningLevel] - Session reasoning effort sent as output_config.effort.
  * @returns {AsyncGenerator<string>}
  */
 export async function* streamChat(messages, model, profile, { signal, reasoningLevel } = {}) {
@@ -42,7 +42,7 @@ export async function* streamChat(messages, model, profile, { signal, reasoningL
             messages: toClaudeMessages(chatMessages),
             max_tokens: maxTokens,
             stream: true,
-            ...reasoningEffortField(reasoningLevel),
+            ...reasoningEffortOutputConfigField(reasoningLevel),
             ...(systemText ? { system: systemText } : {}),
         }),
     });

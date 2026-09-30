@@ -40,10 +40,10 @@ describe("provider request cancellation", () => {
     });
 
     it.each([
-        ["OpenAI", streamOpenAI, "openai"],
-        ["Grok", streamGrok, "grok"],
-        ["Claude", streamClaude, "claude"],
-    ])("includes %s reasoning effort for none and max", async (_, stream, id) => {
+        ["OpenAI", streamOpenAI, "openai", (reasoningLevel) => ({ reasoning_effort: reasoningLevel })],
+        ["Grok", streamGrok, "grok", (reasoningLevel) => ({ reasoning_effort: reasoningLevel })],
+        ["Claude", streamClaude, "claude", (reasoningLevel) => ({ output_config: { effort: reasoningLevel } })],
+    ])("includes %s reasoning effort for none and max", async (_, stream, id, expectedBody) => {
         for (const reasoningLevel of ["none", "max"]) {
             const fetchMock = vi.fn().mockResolvedValue({
                 json: vi.fn().mockResolvedValue({}),
@@ -54,7 +54,7 @@ describe("provider request cancellation", () => {
 
             await expect(stream([], "model", createProfile(id), { reasoningLevel }).next()).rejects.toThrow("Invalid API Key");
 
-            expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ reasoning_effort: reasoningLevel });
+            expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject(expectedBody(reasoningLevel));
         }
     });
 });

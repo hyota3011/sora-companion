@@ -19,7 +19,7 @@ export async function* streamChat(messages, model, profile, { signal, reasoningL
 
 ## SSE Parsing Notes
 
-The optional `reasoningLevel` is session-only. When it is configured, each provider sends it as top-level `reasoning_effort`.
+The optional `reasoningLevel` is session-only. OpenAI and Grok send it as top-level `reasoning_effort`; Claude sends it as `output_config.effort`.
 
 - **OpenAI / Grok** (OpenAI-compatible): split buffer on `\n`, skip `[DONE]`, parse `choices[0].delta.content`.
 - **Claude**: split buffer on `\n\n`, look for `content_block_delta` events with `delta.type === "text_delta"`, yield `delta.text`. Requires headers `x-api-key`, `anthropic-version: 2023-06-01`, and `anthropic-dangerous-direct-browser-access: true`.

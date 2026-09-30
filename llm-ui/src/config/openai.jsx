@@ -3,7 +3,7 @@ import { SearchIcon, SparkleIcon, ZapIcon, GraduationCapIcon, BrainIcon } from "
 export const openai = [
     {
         id: 'luna',
-        title: 'luna',
+        title: 'Luna',
         tag: 'GPT-6 Luna',
         val: 'gpt-6-luna',
         desc: 'Our most efficient model for focused, high-volume tasks',
@@ -12,7 +12,7 @@ export const openai = [
     },
     {
         id: 'sol',
-        title: 'sol',
+        title: 'Sol',
         tag: 'GPT-6 Sol',
         val: 'gpt-6-sol',
         desc: 'Built to power complex coding and agentic workflows',

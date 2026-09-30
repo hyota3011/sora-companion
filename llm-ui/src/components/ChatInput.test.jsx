@@ -40,12 +40,12 @@ describe("ChatInput reasoning effort selector", () => {
         render(<ChatInput />);
 
         await user.click(screen.getByTitle("Effort"));
-        expect(screen.getByRole("button", { name: "high" })).toBeVisible();
+        expect(screen.getByRole("button", { name: "High" })).toBeVisible();
 
-        await user.click(screen.getByRole("button", { name: "high" }));
+        await user.click(screen.getByRole("button", { name: "High" }));
 
         expect(reasoningLevelRef.current).toBe("high");
-        expect(screen.getByTitle("Effort")).toHaveTextContent("high");
-        expect(screen.queryByRole("button", { name: "max" })).not.toBeInTheDocument();
+        expect(screen.getByTitle("Effort")).toHaveTextContent("High");
+        expect(screen.queryByRole("button", { name: "Max" })).not.toBeInTheDocument();
     });
 });
